@@ -1,0 +1,45 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Bazel Build All Targets",
+            "type": "shell",
+            "command": "bazel",
+            "args": [
+                "build",
+                "//:mrpc",
+                "//example/helloworld:greeter_client",
+                "//example/helloworld:greeter_server",
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Bazel Run refresh_compile_commands",
+            "type": "shell",
+            "command": "bazel",
+            "args": [
+                "run",
+                ":refresh_compile_commands"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "Bazel Build and Refresh (Combined)",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Bazel Build All Targets",
+                "Bazel Run refresh_compile_commands"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

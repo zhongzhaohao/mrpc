@@ -1,0 +1,11 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "compilerPath": "/usr/bin/clang-19",
+      "compilerArgs": ["-std=c++17"],
+      "intelliSenseMode": "clang-x64"
+    }
+  ],
+  "version": 4
+}

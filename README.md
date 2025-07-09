@@ -1,0 +1,1 @@
+This is an RPC project for learning Boost.Asio and Bazel, created by a C++ beginner.
