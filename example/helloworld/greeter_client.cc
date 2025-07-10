@@ -7,13 +7,13 @@
 
 class HelloClient {
 public:
-  HelloClient() : stub_() {}
+  HelloClient() : stub_(new HelloStub("127.0.0.1:8080")) {}
 
   std::string SayHello(const std::string &user) {
     SayHelloRequest request(user);
     SayHelloResponse response;
 
-    mrpc::Status status = stub_.SayHello(request, response);
+    mrpc::Status status = stub_->SayHello(request, response);
 
     if (status.ok()) {
       return response.message;
@@ -25,7 +25,7 @@ public:
   }
 
 private:
-HelloStub stub_;
+  std::unique_ptr<HelloStub> stub_;
 };
 
 int main() {

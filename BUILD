@@ -16,13 +16,14 @@ refresh_compile_commands(
 
 cc_library(
     name = "mrpc",
-    hdrs = glob(["include/mrpc/*.h"]),
+    hdrs = [
+        "include/mrpc.h",
+    ],
     includes = ["include"],
     visibility = ["//visibility:public"],
     deps = [
         "//:test_yaml",
-        "//src:common",
-        "//src:rpc_client",
+        "//src:mrpc_core",
     ],
 )
 
@@ -32,4 +33,11 @@ cc_binary(
     deps = [
         "@yaml-cpp//:yaml-cpp",
     ],
+)
+
+cc_library(
+    name = "mrpc_headers",
+    hdrs = ["include/mrpc.h"],
+    includes = ["include"],
+    visibility = ["//visibility:public"],
 )
