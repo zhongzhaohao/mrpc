@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mrpc.h>
+#include "mrpcpp/mrpcpp.h"
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -34,17 +34,11 @@ public:
   std::string message;
 };
 
-class HelloStub {
+class HelloStub : mrpc::MRPCClient {
 public:
-  HelloStub(const std::string &addr) { client_ = mrpc_create_client(addr); }
-
-  ~HelloStub() { mrpc_destroy_client(client_); }
+  HelloStub(const std::string &addr) : mrpc::MRPCClient(addr) {}
 
   mrpc::Status SayHello(SayHelloRequest &request, SayHelloResponse &response) {
-    return mrpc_sync_send_request(client_, Hello_method_names[0], request,
-                                  response);
+    return Send(Hello_method_names[0], request, response);
   }
-
-private:
-  mrpc_client *client_;
 };

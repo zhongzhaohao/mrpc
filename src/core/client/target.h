@@ -22,8 +22,7 @@ public:
     }
   }
 
-  tcp::resolver::results_type resolve(boost::asio::io_context &ctx) {
-    tcp::resolver resolver(ctx);
+  tcp::resolver::results_type resolve(tcp::resolver &resolver) {
     return resolver.resolve(host_, service_);
   }
 

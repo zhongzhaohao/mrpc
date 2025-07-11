@@ -18,7 +18,7 @@ public:
     if (status.ok()) {
       return response.message;
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
+      std::cout << status.error_code() << ": " << status.message()
                 << std::endl;
       return "RPC failed";
     }

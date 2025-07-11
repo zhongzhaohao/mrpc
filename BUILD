@@ -14,19 +14,6 @@ refresh_compile_commands(
     ],
 )
 
-cc_library(
-    name = "mrpc",
-    hdrs = [
-        "include/mrpc.h",
-    ],
-    includes = ["include"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//:test_yaml",
-        "//src:mrpc_core",
-    ],
-)
-
 cc_binary(
     name = "test_yaml",
     srcs = ["test/parser.cc"],
@@ -36,8 +23,29 @@ cc_binary(
 )
 
 cc_library(
-    name = "mrpc_headers",
-    hdrs = ["include/mrpc.h"],
+    name = "mrpc-cpp",
     includes = ["include"],
     visibility = ["//visibility:public"],
+    deps = [
+        "//src/cpp:mrpc-cpp-frontend",
+    ],
+)
+
+# ============== headers ================
+
+cc_library(
+    name = "mrpcpp_hearders",
+    hdrs = glob(["include/mrpcpp/*.h"]),
+    includes = ["include"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "mrpc_core_headers",
+    ],
+)
+
+cc_library(
+    name = "mrpc_core_headers",
+    hdrs = glob(["include/mrpc/*.h"]),
+    includes = ["include"],
+    visibility = ["//:__subpackages__"],
 )

@@ -4,17 +4,18 @@ cc_binary(
     name = "greeter_server",
     srcs = ["greeter_server.cc"],
     deps = [
-        "@nlohmann_json//:json",
         "@boost.asio//:boost.asio",
+        "@nlohmann_json//:json",
     ],
 )
 
 cc_binary(
     name = "greeter_client",
-    srcs = ["greeter_client.cc","helloworld.mrpc.h"],
+    srcs = [
+        "greeter_client.cc",
+        "helloworld.mrpc.h",
+    ],
     deps = [
-        "@nlohmann_json//:json",
-        "@boost.asio//:boost.asio",
-        "//:mrpc",
+        "//:mrpc-cpp",
     ],
 )

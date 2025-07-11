@@ -1,3 +1,7 @@
+#pragma once
+
+// copy from grpc
+
 template <typename CppType, typename CType>
 class CppImplOf {
  public:

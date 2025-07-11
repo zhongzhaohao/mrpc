@@ -1,11 +1,11 @@
 #pragma once
 
-#include "mrpc.h"
-#include "src/client/channel.h"
-#include "src/client/target.h"
-#include "src/common/c_cpp_trans.h"
-#include "src/common/json_utils.h"
-#include "src/common/status.h"
+#include "src/core/client/channel.h"
+#include "src/core/client/target.h"
+#include "src/core/common/c_cpp_trans.h"
+
+#include "mrpc/mrpc.h"
+
 
 #include <iostream>
 #include <thread>
@@ -14,13 +14,13 @@ namespace asio = boost::asio;
 using tcp = asio::ip::tcp;
 
 namespace mrpc {
-class RpcClient : public CppImplOf<RpcClient, mrpc_client> {
+class Client : public CppImplOf<Client, mrpc_client> {
 public:
-  RpcClient(const std::string &addr)
+  Client(const std::string &addr)
       : io_(), work_guard_(boost::asio::make_work_guard(io_)),
         io_thread_(std::thread([this] { io_.run(); })), target_(addr) {}
 
-  ~RpcClient() {
+  ~Client() {
     std::cout << "clear rpc client" << std::endl;
     work_guard_.reset();
     io_.stop();
@@ -29,10 +29,10 @@ public:
     }
   }
 
-  Status post(std::string func, ParseToJson &t, ParseFromJson &f);
+  mrpc_status post(mrpc_client *client, mrpc_call *call);
 
 private:
-  void _init_channel() { channel_ = std::make_shared<Channel>(io_, target_); }
+  void _init_channel() { channel_ = Channel::Create(io_, target_); }
 
 private:
   boost::asio::io_context io_;

@@ -7,7 +7,6 @@
             "command": "bazel",
             "args": [
                 "build",
-                "//:mrpc",
                 "//example/helloworld:greeter_client",
                 "//example/helloworld:greeter_server",
             ],
