@@ -31,9 +31,11 @@ private:
 int main() {
   HelloClient hello;
 
-  std::string response = hello.SayHello("what");
+  std::string response1 = hello.SayHello("what");
+  std::cout << "Greeter 1 received: " << response1 << std::endl;
 
-  std::cout << "Greeter received: " << response << std::endl;
-
+  std::string response2 = hello.SayHello("???");
+  std::cout << "Greeter 2 received: " << response2 << std::endl;
+  
   return 0;
 }

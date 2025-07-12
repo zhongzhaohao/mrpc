@@ -17,7 +17,7 @@ class ParseFromJson {
 public:
   virtual ~ParseFromJson() = default;
 
-  virtual void fromString(std::string &s) {
+  virtual void fromString(std::string &&s) {
     fromJson(nlohmann::json::parse(s));
   }
 

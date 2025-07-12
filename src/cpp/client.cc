@@ -24,13 +24,20 @@ Status MRPCClient::Send(const std::string &func, ParseToJson &request,
 
   mrpc_call call{key.c_str(), req.c_str()};
   Status status = mrpc_send_request(client_, &call);
+  if (!status.ok()) {
+    return status << "send func : " << func << "error";
+  }
 
-  // and get respce
+  status = mrpc_receive_response(client_, &call);
+
+  response.fromString(std::string(call.message));
 
   if (status.ok()) {
     return status;
   } else {
-    return status << "send func : " << func << "error";
+    return status << "receive func : " << func << "error";
   }
+
+  // and get respce
 }
 } // namespace mrpc

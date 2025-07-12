@@ -14,4 +14,6 @@ void mrpc_destroy_client(mrpc_client *client);
 
 mrpc_status mrpc_send_request(mrpc_client *client, mrpc_call *call);
 
+mrpc_status mrpc_receive_response(mrpc_client *client, mrpc_call *call);
+
 }

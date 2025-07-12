@@ -7,6 +7,14 @@
             "program": "${workspaceFolder}/bazel-bin/example/helloworld/greeter_client",
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
+        },
+        {
+            "name": "test sync server",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bazel-bin/example/helloworld/greeter_server",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
         }
     ]
 }
