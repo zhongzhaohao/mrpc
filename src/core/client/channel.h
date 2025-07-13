@@ -4,6 +4,7 @@
 #include <boost/asio.hpp>
 
 #include "mrpc/call.h"
+#include "mrpc/status.h"
 
 namespace mrpc {
 using boost::asio::io_context;
@@ -13,12 +14,15 @@ class Call {
 public:
   Call() {}
   explicit Call(mrpc_call *c_call)
-      : key(c_call->key), message(c_call->message) {}
+      : key(c_call->key), message(c_call->message), handler(c_call->handler),
+        ctx(c_call->ctx) {}
 
   Call(std::string &key, std::string &message) : key(key), message(message) {}
 
   std::string key;
   std::string message;
+  std::function<void(const char *, void *ctx)> handler;
+  void *ctx;
 };
 
 class rpc_event_queue {
@@ -30,7 +34,7 @@ public:
     pending_requests_.emplace(call.key, rpc_event(false, call));
   }
 
-  void remove(std::string &key) {
+  void remove(const std::string &key) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
     pending_requests_.erase(key);
   }
@@ -42,7 +46,7 @@ public:
     }
   }
 
-  bool success(std::string &key) {
+  bool success(const std::string &key) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
     auto call = pending_requests_.find(key);
     if (call != pending_requests_.end()) {
@@ -51,16 +55,17 @@ public:
     return false;
   }
 
-  std::string get_result(std::string &key) {
+  std::string get_result(const std::string &key) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
     return pending_requests_.find(key)->second.result;
   }
 
-  void set_result(std::string &key, std::string result) {
+  Call& set_result(const std::string &key, std::string result) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
-    auto call = pending_requests_.find(key);
-    call->second.result = result;
-    call->second.success = true;
+    auto event = &pending_requests_.find(key)->second;
+    event->result = result;
+    event->success = true;
+    return event->call;
   }
 
 private:
@@ -114,9 +119,11 @@ public:
 
   ~Channel();
 
-  void Send(mrpc_call *call);
+  mrpc_status Send(mrpc_call *call);
 
-  void Receive(mrpc_call *call);
+  mrpc_status Receive(mrpc_call *call);
+
+  void Wait(mrpc_call *call);
 
   // 主动连接（可用于重连）
   void Connect();

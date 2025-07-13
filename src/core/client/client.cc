@@ -1,28 +1,15 @@
 #include "client.h"
-#include <iostream>
 
 namespace mrpc {
-mrpc_status Client::Send(mrpc_client *client, mrpc_call *call) {
-  try {
-    std::call_once(channel_flag_, &Client::_init_channel, this);
+mrpc_status Client::Send(mrpc_call *call) {
+  std::call_once(channel_flag_, &Client::_init_channel, this);
 
-    channel_->Send(call);
-
-    return MRPC_OK;
-  } catch (const std::exception &e) {
-    std::cerr << "Exception: " << e.what() << "\n";
-    return MRPC_FAILURE;
-  }
+  return channel_->Send(call);
 }
 
-mrpc_status Client::Receive(mrpc_client *client, mrpc_call *call){
-  try {
-    channel_->Receive(call);
-    return MRPC_OK;
-  } catch (const std::exception &e) {
-    std::cerr << "Exception: " << e.what() << "\n";
-    return MRPC_FAILURE;
-  }
+mrpc_status Client::Receive(mrpc_call *call) {
+  channel_->Wait(call);
+  return channel_->Receive(call);
 }
 
 } // namespace mrpc
@@ -36,11 +23,15 @@ void mrpc_destroy_client(mrpc_client *client) {
 }
 
 mrpc_status mrpc_send_request(mrpc_client *client, mrpc_call *call) {
-  return mrpc::Client::FromC(client)->Send(client, call);
+  return mrpc::Client::FromC(client)->Send(call);
+}
+
+mrpc_status mrpc_send_request_with_callback(mrpc_client *client,
+                                            mrpc_call *call,
+                                            response_handler func) {
+  return mrpc::Client::FromC(client)->Send(call);
 }
 
 mrpc_status mrpc_receive_response(mrpc_client *client, mrpc_call *call) {
-  return mrpc::Client::FromC(client)->Receive(client, call);
+  return mrpc::Client::FromC(client)->Receive(call);
 }
-
-

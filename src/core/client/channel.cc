@@ -93,7 +93,12 @@ void Channel::OnRead(const boost::system::error_code &ec) {
 
     auto response = ParseMessage(buffer_content);
 
-    wait_result_queue.set_result(response.key, response.message);
+    auto call = wait_result_queue.set_result(response.key, response.message);
+    if (call.handler) {
+      // 如果有回调的话其实并不需要向 wait_result_queue 中写数据
+      call.handler(response.message.c_str(), call.ctx);
+      wait_result_queue.remove(response.key);
+    }
   }
   DoRead();
 }
@@ -106,7 +111,15 @@ Channel::~Channel() {
 #endif
 }
 
-void Channel::Send(mrpc_call *call) { Send(Call(call)); }
+mrpc_status Channel::Send(mrpc_call *call) {
+  try {
+    Send(Call(call));
+    // 这里有可能只是将请求暂存到 pending_queue 中，并没有发送
+    return MRPC_OK;
+  } catch (const std::exception &e) {
+    return MRPC_FAILURE;
+  }
+}
 
 void Channel::Send(Call &&call) {
   {
@@ -136,6 +149,8 @@ void Channel::Send(Call &&call) {
                              if (ec) {
                                std::cerr << "Write error for req [" << call.key
                                          << "] : " << ec.message() << std::endl;
+
+                               self->wait_result_queue.remove(call.key);
                              } else {
                                std::cout << "write rpc req [" << call.key << "]"
                                          << std::endl;
@@ -144,12 +159,21 @@ void Channel::Send(Call &&call) {
                            });
 }
 
-void Channel::Receive(mrpc_call *call) {
+mrpc_status Channel::Receive(mrpc_call *call) {
+  auto key = std::string(call->key);
+  if (!wait_result_queue.success(key)) {
+    return MRPC_FAILURE;
+  } else {
+    call->message = strdup(wait_result_queue.get_result(key).c_str());
+    wait_result_queue.remove(key);
+    return MRPC_OK;
+  }
+}
+
+void Channel::Wait(mrpc_call *call) {
   auto key = std::string(call->key);
   while (!wait_result_queue.success(key)) {
   }
-  call->message = strdup(wait_result_queue.get_result(key).c_str());
-  wait_result_queue.remove(key);
 }
 
 } // namespace mrpc

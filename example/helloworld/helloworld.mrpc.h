@@ -41,4 +41,16 @@ public:
   mrpc::Status SayHello(SayHelloRequest &request, SayHelloResponse &response) {
     return Send(Hello_method_names[0], request, response);
   }
+
+  mrpc::Status AsyncSayHello(SayHelloRequest &request) {
+    return AsyncSend(Hello_method_names[0], request);
+  }
+
+  void CallbackSayHello(SayHelloRequest &request, SayHelloResponse &response,std::function<void(mrpc::Status)> callback) {
+    return CallbackSend(Hello_method_names[0], request, response,callback);
+  }
+
+  mrpc::Status Receive(const std::string &key, SayHelloResponse &response) {
+    return mrpc::MRPCClient::Receive(key,response);
+  }
 };

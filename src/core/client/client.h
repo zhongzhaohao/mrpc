@@ -29,9 +29,9 @@ public:
     }
   }
 
-  mrpc_status Send(mrpc_client *client, mrpc_call *call);
+  mrpc_status Send(mrpc_call *call);
 
-  mrpc_status Receive(mrpc_client *client, mrpc_call *call);
+  mrpc_status Receive(mrpc_call *call);
 
 private:
   void _init_channel() { channel_ = Channel::Create(io_, target_); }
