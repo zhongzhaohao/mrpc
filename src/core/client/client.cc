@@ -26,12 +26,6 @@ mrpc_status mrpc_send_request(mrpc_client *client, mrpc_call *call) {
   return mrpc::Client::FromC(client)->Send(call);
 }
 
-mrpc_status mrpc_send_request_with_callback(mrpc_client *client,
-                                            mrpc_call *call,
-                                            response_handler func) {
-  return mrpc::Client::FromC(client)->Send(call);
-}
-
 mrpc_status mrpc_receive_response(mrpc_client *client, mrpc_call *call) {
   return mrpc::Client::FromC(client)->Receive(call);
 }

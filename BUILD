@@ -1,5 +1,6 @@
 load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_go//go:def.bzl", "go_library")
 
 # bazel run :refresh_compile_commands
 refresh_compile_commands(
@@ -10,7 +11,9 @@ refresh_compile_commands(
     # Specify the targets of interest.
     # For example, specify a dict of targets and any flags required to build.
     targets = [
-        "//...",
+        "//src/core/...",
+        "//src/cpp/...",
+        "//example/...",
     ],
 )
 
@@ -29,6 +32,17 @@ cc_library(
     deps = [
         "//src/cpp:mrpc-cpp-frontend",
     ],
+)
+
+# 这里要用嵌入，不能依赖
+go_library(
+    name = "mrpc-go",
+    embed = ["//src/go:mrpc-go-frontend"],
+    importpath = "mrpc",
+    visibility = ["//visibility:public"],
+    # deps = [
+    #     "//src/go:mrpc-go-frontend",
+    # ],
 )
 
 # ============== headers ================

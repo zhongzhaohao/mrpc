@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "mrpc/status.h"
+#include "mrpc/mrpc.h"
 
 namespace mrpc {
 enum StatusCode {

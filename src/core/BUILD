@@ -12,7 +12,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":client_channel",
-        ":common",
     ],
 )
 
@@ -29,12 +28,13 @@ cc_library(
     deps = [
         ":common",
         "@boost.asio//:boost.asio",
-        "//:mrpc_core_headers",
     ],
 )
 
 cc_library(
     name = "common",
+    srcs = ["common/id.cc"],
     hdrs = ["common/c_cpp_trans.h"],
     visibility = ["//visibility:__pkg__"],
+    deps = ["//:mrpc_core_headers"],
 )

@@ -47,7 +47,7 @@ public:
   }
 
   void CallbackSayHello(SayHelloRequest &request, SayHelloResponse &response,std::function<void(mrpc::Status)> callback) {
-    return CallbackSend(Hello_method_names[0], request, response,callback);
+    CallbackSend(Hello_method_names[0], request, response,callback);
   }
 
   mrpc::Status Receive(const std::string &key, SayHelloResponse &response) {

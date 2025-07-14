@@ -8,6 +8,7 @@ bazel_dep(name = "boost.asio", version = "1.87.0")
 bazel_dep(name = "boost.uuid", version = "1.87.0")
 bazel_dep(name = "yaml-cpp", version = "0.8.0")
 bazel_dep(name = "rules_cc", version = "0.1.2")
+bazel_dep(name = "rules_go", version = "0.55.1")
 
 # Hedron's Compile Commands Extractor for Bazel
 # https://github.com/hedronvision/bazel-compile-commands-extractor

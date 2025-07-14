@@ -96,7 +96,7 @@ void Channel::OnRead(const boost::system::error_code &ec) {
     auto call = wait_result_queue.set_result(response.key, response.message);
     if (call.handler) {
       // 如果有回调的话其实并不需要向 wait_result_queue 中写数据
-      call.handler(response.message.c_str(), call.ctx);
+      call.handler(call.key.c_str(), response.message.c_str());
       wait_result_queue.remove(response.key);
     }
   }

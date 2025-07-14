@@ -7,8 +7,9 @@
             "command": "bazel",
             "args": [
                 "build",
-                "//example/helloworld:greeter_client",
-                "//example/helloworld:greeter_server",
+                "//example/helloworld/go:greeter_client",
+                "//example/helloworld/cpp:greeter_client",
+                "//example/helloworld/cpp:greeter_server",
             ],
             "group": {
                 "kind": "build",

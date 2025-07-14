@@ -3,8 +3,7 @@
 #include "src/core/client/target.h"
 #include <boost/asio.hpp>
 
-#include "mrpc/call.h"
-#include "mrpc/status.h"
+#include "mrpc/mrpc.h"
 
 namespace mrpc {
 using boost::asio::io_context;
@@ -14,15 +13,13 @@ class Call {
 public:
   Call() {}
   explicit Call(mrpc_call *c_call)
-      : key(c_call->key), message(c_call->message), handler(c_call->handler),
-        ctx(c_call->ctx) {}
+      : key(c_call->key), message(c_call->message), handler(c_call->handler) {}
 
   Call(std::string &key, std::string &message) : key(key), message(message) {}
 
   std::string key;
   std::string message;
-  std::function<void(const char *, void *ctx)> handler;
-  void *ctx;
+  std::function<void(cchar_t *, cchar_t *)> handler;
 };
 
 class rpc_event_queue {
@@ -60,7 +57,7 @@ public:
     return pending_requests_.find(key)->second.result;
   }
 
-  Call& set_result(const std::string &key, std::string result) {
+  Call &set_result(const std::string &key, std::string result) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
     auto event = &pending_requests_.find(key)->second;
     event->result = result;

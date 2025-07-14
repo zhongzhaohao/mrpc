@@ -1,26 +1,13 @@
 #include "mrpcpp/mrpcpp.h"
 
-#include <random>
+#include <mutex>
 #include <string>
 
-std::string nanoid(size_t len = 8) {
-  const std::string chars =
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  std::string result;
-  std::random_device rd;
-  std::mt19937 gen(rd());
-
-  for (size_t i = 0; i < len; ++i) {
-    result += chars[gen() % chars.size()];
-  }
-  return result;
-}
-
 std::string rpc_id(const std::string &func) {
-  // key = func-id-cpp
-  std::ostringstream oss;
-  oss << func << "-" << nanoid() << "-cpp";
-  return oss.str();
+  const size_t buf_size = 128;
+  char buf[buf_size];
+  mrpc_get_unique_id(func.c_str(), buf);
+  return std::string(buf);
 }
 
 namespace mrpc {
@@ -54,41 +41,6 @@ mrpc::Status MRPCClient::AsyncSend(const std::string &func,
   }
 }
 
-void MRPCClient::CallbackSend(const std::string &func, ParseToJson &request,
-                              ParseFromJson &response,
-                              std::function<void(mrpc::Status)> receive) {
-  auto req = request.toString();
-  auto key = rpc_id(func);
-
-  auto context = new CallContext();
-  context->callback = [&response, receive](const char *result) {
-    if (result) {
-      response.fromString(result);
-    }
-    receive(Status());
-  };
-
-  mrpc_call call{
-      key.c_str(),
-      req.c_str(),
-      [](const char *result, void *data) {
-        auto *ctx = static_cast<CallContext *>(data);
-        if (ctx && ctx->callback) {
-          ctx->callback(result);
-        }
-        // 这里需要手动delete，不然会内存泄漏
-        delete ctx;
-      },
-      context,
-  };
-
-  Status status = mrpc_send_request(client_, &call);
-
-  if (!status.ok()) {
-    receive(status);
-  }
-}
-
 mrpc::Status MRPCClient::Receive(const std::string &key,
                                  ParseFromJson &response) {
   mrpc_call call{key.c_str(), nullptr};
@@ -102,6 +54,60 @@ mrpc::Status MRPCClient::Receive(const std::string &key,
     return status;
   } else {
     return status << "receive func : " << key << "error";
+  }
+}
+
+// cchar_t = const char
+using Callback = std::function<void(cchar_t *)>;
+
+std::map<std::string, std::function<void(cchar_t *)>> g_callbacks;
+std::mutex g_callback_mutex;
+
+extern "C" void GlobalRpcCallback(cchar_t *key, cchar_t *result) {
+  Callback cb;
+
+  {
+    std::lock_guard<std::mutex> lock(g_callback_mutex);
+    auto it = g_callbacks.find(key);
+    if (it != g_callbacks.end()) {
+      cb = it->second;
+      g_callbacks.erase(it);
+    }
+  }
+
+  if (cb) {
+    cb(result);
+  }
+}
+
+void RegisterRpcCallback(const std::string &key, Callback cb) {
+  std::lock_guard<std::mutex> lock(g_callback_mutex);
+  g_callbacks[key] = std::move(cb);
+}
+
+void MRPCClient::CallbackSend(const std::string &func, ParseToJson &request,
+                              ParseFromJson &response,
+                              std::function<void(mrpc::Status)> receive) {
+  auto req = request.toString();
+  auto key = rpc_id(func);
+
+  auto callback = [&response, receive](cchar_t *result) {
+    response.fromString(result);
+    receive(Status());
+  };
+
+  RegisterRpcCallback(key, callback);
+
+  mrpc_call call{
+      key.c_str(),
+      req.c_str(),
+      GlobalRpcCallback,
+  };
+
+  Status status = mrpc_send_request(client_, &call);
+
+  if (!status.ok()) {
+    receive(status);
   }
 }
 
