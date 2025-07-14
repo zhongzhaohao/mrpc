@@ -11,12 +11,12 @@ bazel_dep(name = "rules_go", version = "0.55.1")
 bazel_dep(name = "rules_python", version = "1.5.1")
 bazel_dep(name = "bazel_skylib", version = "1.8.1")
 
-new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
-new_local_repository(
-    name = "python3_12",
-    path = "/usr/include/python3.12",
-    build_file = "python.BUILD",
-)
+# new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
+# new_local_repository(
+#     name = "python3_12",
+#     path = "/usr/include/python3.12",
+#     build_file = "python.BUILD",
+# )
 
 # Hedron's Compile Commands Extractor for Bazel
 # https://github.com/hedronvision/bazel-compile-commands-extractor
