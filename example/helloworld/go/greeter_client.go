@@ -7,6 +7,7 @@ import (
 
 func main() {
 	client := NewHelloClient("127.0.0.1:8080")
+	defer client.Close()
 	{
 		message, err := client.SayHello(&SayHelloRequest{"sync RPC"})
 		if err == nil {

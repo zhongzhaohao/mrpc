@@ -1,6 +1,7 @@
 load("@hedron_compile_commands//:refresh_compile_commands.bzl", "refresh_compile_commands")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@rules_go//go:def.bzl", "go_library")
+load("@rules_python//python:py_library.bzl", "py_library")
 
 # bazel run :refresh_compile_commands
 refresh_compile_commands(
@@ -45,6 +46,14 @@ go_library(
     # ],
 )
 
+py_library(
+    name = "mrpc-py",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/python:mrpc-python-frontend",
+    ],
+)
+
 # ============== headers ================
 
 cc_library(
@@ -62,4 +71,5 @@ cc_library(
     hdrs = glob(["include/mrpc/*.h"]),
     includes = ["include"],
     visibility = ["//:__subpackages__"],
+    # alwayslink = True,
 )

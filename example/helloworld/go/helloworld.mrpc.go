@@ -47,11 +47,11 @@ func (h *HelloClient) SayHello(request *SayHelloRequest) (string, error) {
 }
 
 func (h *HelloClient) AsyncSayHello(request *SayHelloRequest) (string, error) {
-	return h.client.AsyncSend(Hello_method_names[0], request, nil, nil)
+	return h.client.AsyncSend(Hello_method_names[0], request)
 }
 
 func (h *HelloClient) CallbackSayHello(request *SayHelloRequest, callback func(string, error)) {
-	h.client.AsyncSend(Hello_method_names[0], request, h.response, func(err error) {
+	h.client.CallbackSend(Hello_method_names[0], request, h.response, func(err error) {
 		callback(h.response.Message, err)
 	})
 }
@@ -59,4 +59,8 @@ func (h *HelloClient) CallbackSayHello(request *SayHelloRequest, callback func(s
 func (h *HelloClient) Receive(key string) (string, error) {
 	err := h.client.Receive(key, h.response)
 	return h.response.Message, err
+}
+
+func (h *HelloClient) Close() {
+	h.client.Close()
 }

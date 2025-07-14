@@ -10,6 +10,5 @@ cc_library(
         "//src/core:rpc_client",
         "//:mrpcpp_hearders",
         "@nlohmann_json//:json",
-        "@boost.uuid//:boost.uuid",
     ],
 )

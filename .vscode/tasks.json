@@ -7,6 +7,7 @@
             "command": "bazel",
             "args": [
                 "build",
+                "//example/helloworld/python:greeter_client",
                 "//example/helloworld/go:greeter_client",
                 "//example/helloworld/cpp:greeter_client",
                 "//example/helloworld/cpp:greeter_server",

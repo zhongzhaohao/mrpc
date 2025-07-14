@@ -12,11 +12,24 @@ package mrpc
 void GlobalRpcCallback(cchar_t *key, cchar_t *result);
 */
 import "C"
+
+// cgo这个import必须紧跟在注释后
+
 import (
 	"errors"
 	"sync"
 	"unsafe"
 )
+
+// rpc_id 生成 func-id-cpp 格式字符串
+func rpcID(funcName string) string {
+	cFunc := C.CString(funcName)
+	defer C.free(unsafe.Pointer(cFunc))
+
+	buf := make([]C.char, 128)
+	C.mrpc_get_unique_id(cFunc, &buf[0])
+	return C.GoString(&buf[0])
+}
 
 // Client 是对 C 客户端的封装
 type Client struct {
@@ -37,25 +50,9 @@ func (c *Client) Close() {
 	C.mrpc_destroy_client(c.cClient)
 }
 
-// rpc_id 生成 func-id-cpp 格式字符串
-func rpcID(funcName string) string {
-	cFunc := C.CString(funcName)
-	defer C.free(unsafe.Pointer(cFunc))
-
-	buf := make([]C.char, 128)
-	C.mrpc_get_unique_id(cFunc, &buf[0])
-	return C.GoString(&buf[0])
-}
-
-// Call 表示一次 RPC 调用
-type Call struct {
-	Key     string
-	Message string
-}
-
 // Send 发送请求并同步接收响应
 func (c *Client) Send(funcName string, request ParseToJson, response ParseFromJson) error {
-	key, err := c.AsyncSend(funcName, request, response, nil)
+	key, err := c.AsyncSend(funcName, request)
 	if err != nil {
 		return err
 	}
@@ -79,6 +76,34 @@ func (c *Client) Receive(key string, response ParseFromJson) error {
 	C.free(unsafe.Pointer(rCall.message))
 
 	return err
+}
+
+// AsyncSend 异步发送请求并注册回调
+func (c *Client) AsyncSend(funcName string, request ParseToJson) (string, error) {
+	reqStr, err := request.ToString()
+	if err != nil {
+		return "", err
+	}
+
+	key := rpcID(funcName)
+
+	keyC := C.CString(key)
+	messageC := C.CString(reqStr)
+	defer C.free(unsafe.Pointer(keyC))
+	defer C.free(unsafe.Pointer(messageC))
+
+	cCall := C.mrpc_call{
+		key:     keyC,
+		message: messageC,
+	}
+
+	status := C.mrpc_send_request(c.cClient, &cCall)
+
+	if status != C.MRPC_OK {
+		return "", errors.New("send request fail")
+	} else {
+		return key, nil
+	}
 }
 
 var gCallbacks = make(map[string]func(string))
@@ -108,8 +133,7 @@ func GlobalRpcCallback(key, result *C.cchar_t) {
 	}
 }
 
-// AsyncSend 异步发送请求并注册回调
-func (c *Client) AsyncSend(funcName string, request ParseToJson, response ParseFromJson, callback func(error)) (string, error) {
+func (c *Client) CallbackSend(funcName string, request ParseToJson, response ParseFromJson, callback func(error)) {
 	reqStr, err := request.ToString()
 	if err != nil {
 		callback(err)
@@ -117,18 +141,12 @@ func (c *Client) AsyncSend(funcName string, request ParseToJson, response ParseF
 
 	key := rpcID(funcName)
 
-	var handler C.response_handler = nil
-
-	if callback != nil {
-		response_handler := func(result string) {
-			err = response.FromString(result)
-			callback(err)
-		}
-
-		RegisterRpcCallback(key, response_handler)
-
-		handler = (C.response_handler)(unsafe.Pointer(C.GlobalRpcCallback))
+	response_handler := func(result string) {
+		err = response.FromString(result)
+		callback(err)
 	}
+
+	RegisterRpcCallback(key, response_handler)
 
 	keyC := C.CString(key)
 	messageC := C.CString(reqStr)
@@ -138,15 +156,13 @@ func (c *Client) AsyncSend(funcName string, request ParseToJson, response ParseF
 	cCall := C.mrpc_call{
 		key:     keyC,
 		message: messageC,
-		handler: handler,
+		handler: (C.response_handler)(unsafe.Pointer(C.GlobalRpcCallback)),
 	}
 
 	status := C.mrpc_send_request(c.cClient, &cCall)
 
 	if status != C.MRPC_OK {
-		return "", errors.New("send request fail")
-	} else {
-		return key, nil
+		callback(errors.New("send request fail"))
 	}
 }
 
