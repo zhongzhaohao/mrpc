@@ -1,34 +1,33 @@
-from enum import IntEnum
-
-
-class Status(Exception):
-
+class MrpcError(Exception):
     CANCELED = None
-    FAILURE = None
+    MRPC_SEND_FAILURE = None
+    MRPC_PARSE_FAILURE = None
 
     def __init__(self, code: int, message: str = ""):
         self.code = code
         self.message = message
         super().__init__(self.message)
 
-    def ok(self) -> bool:
-        return self is Status.OK
 
-    def with_message(self, detail: str) -> "Status":
-        return Status(self.code, f"{self.message}: {detail}")
-    
-    @staticmethod
-    def From(code: int) -> "Status":
-        if code == 0:
-            return Status.OK
-        elif code == 1:
-            return Status.CANCELED
-        elif code == 2:
-            return Status.FAILURE
-        else:
-            raise ValueError(f"Unknown status code: {code}")
+    def __str__(self):
+        return f"Code: {self.code}, Message: {self.message}"
+
+    def __repr__(self):
+        return f"MrpcError(code={self.code}, message='{self.message}')"
 
 
-Status.OK = Status(0, "OK")
-Status.CANCELED = Status(1, "Canceled")
-Status.FAILURE = Status(2, "Failure")
+MrpcError.CANCELED = MrpcError(1, "Operation was canceled")
+MrpcError.MRPC_SEND_FAILURE = MrpcError(2, "Failed to send mrpc message")
+MrpcError.MRPC_PARSE_FAILURE = MrpcError(3, "Failed to parse mrpc response")
+
+def MrpcErrorFrom(code: int) -> MrpcError | None:
+    if code == 0:
+        return None
+    elif code == 1:
+        return MrpcError.CANCELED
+    elif code == 2:
+        return MrpcError.MRPC_SEND_FAILURE
+    elif code == 3:
+        return MrpcError.MRPC_PARSE_FAILURE
+    else:
+        raise ValueError(f"Unknown status code: {code}")

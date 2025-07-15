@@ -9,73 +9,50 @@ namespace mrpc {
 using boost::asio::io_context;
 using boost::asio::ip::tcp;
 
-class Call {
-public:
-  Call() {}
-  explicit Call(mrpc_call *c_call)
-      : key(c_call->key), message(c_call->message), handler(c_call->handler) {}
-
-  Call(std::string &key, std::string &message) : key(key), message(message) {}
-
-  std::string key;
-  std::string message;
-  std::function<void(cchar_t *, cchar_t *)> handler;
-};
-
 class rpc_event_queue {
 public:
   rpc_event_queue() : pending_requests_() {}
 
-  void add(Call &call) {
+  void add(mrpc_call *call) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
-    pending_requests_.emplace(call.key, rpc_event(false, call));
+    // 防止内存被前端释放，handler为全局函数，地址不会变
+    mrpc_call save{
+        strdup(call->key),
+        strdup(call->message),
+        call->handler,
+    };
+    pending_requests_.emplace(call->key, save);
   }
 
-  void remove(const std::string &key) {
+  void consume(std::function<void(mrpc_call *)> send) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
-    pending_requests_.erase(key);
-  }
-
-  void doAll(std::function<void(Call &&)> send) {
-    std::unique_lock<std::mutex> lock(pending_mutex_);
-    for (auto &[key, event] : pending_requests_) {
-      send(std::move(event.call));
+    for (auto &[key, call] : pending_requests_) {
+      send(&call);
+      // 在消耗掉此call后需要回收strdup分配的内存
+      erase(call);
     }
+    pending_requests_.clear();
   }
 
-  bool success(const std::string &key) {
+  response_handler consume_with_handler(const std::string key) {
     std::unique_lock<std::mutex> lock(pending_mutex_);
     auto call = pending_requests_.find(key);
-    if (call != pending_requests_.end()) {
-      return call->second.success;
-    }
-    return false;
-  }
-
-  std::string get_result(const std::string &key) {
-    std::unique_lock<std::mutex> lock(pending_mutex_);
-    return pending_requests_.find(key)->second.result;
-  }
-
-  Call &set_result(const std::string &key, std::string result) {
-    std::unique_lock<std::mutex> lock(pending_mutex_);
-    auto event = &pending_requests_.find(key)->second;
-    event->result = result;
-    event->success = true;
-    return event->call;
+    assert(call != pending_requests_.end());
+    auto handler = call->second.handler;
+    // 在消耗掉此call后需要回收strdup分配的内存
+    erase(call->second);
+    pending_requests_.erase(key);
+    return handler;
   }
 
 private:
-  class rpc_event {
-  public:
-    explicit rpc_event(bool s, Call &c) : success(s), call(c), result() {}
+  void erase(mrpc_call &call) {
+    free((void *)call.key);
+    free((void *)call.message);
+  }
 
-    bool success;
-    Call call;
-    std::string result;
-  };
   std::mutex pending_mutex_;
-  std::unordered_map<std::string, rpc_event> pending_requests_;
+  std::unordered_map<std::string, mrpc_call> pending_requests_;
 };
 
 class connect_status {
@@ -118,16 +95,12 @@ public:
 
   mrpc_status Send(mrpc_call *call);
 
-  mrpc_status Receive(mrpc_call *call);
-
-  void Wait(mrpc_call *call);
-
   // 主动连接（可用于重连）
-  void Connect();
+  // first call outside without lock
+  void Connect(std::function<void()> func = nullptr);
 
 private:
   void OnConnect(const boost::system::error_code &ec);
-  void Send(Call &&call);
   void DoRead();
   void OnRead(const boost::system::error_code &ec);
 

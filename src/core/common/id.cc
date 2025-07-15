@@ -30,7 +30,7 @@ int nanoid(char *buf) {
 }
 
 
-int mrpc_get_unique_id(const char *func, char *buf) {
+MRPC_API int mrpc_get_unique_id(const char *func, char *buf) {
   char id[9]; // 8字符 + '\0'
   nanoid(id);
   snprintf(buf, 128, "%s-%s", func, id);

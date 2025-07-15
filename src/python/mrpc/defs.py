@@ -3,7 +3,7 @@ import os
 
 
 cchar_p = ctypes.c_char_p
-response_handler = ctypes.CFUNCTYPE(None, cchar_p, cchar_p)
+response_handler = ctypes.CFUNCTYPE(None, cchar_p, cchar_p, ctypes.c_int)
 
 
 class MrpcCall(ctypes.Structure):
@@ -14,13 +14,10 @@ class MrpcCall(ctypes.Structure):
     ]
 
     @staticmethod
-    def NewMrpcCall(key: str, message: str = None, handler=None):
-        if handler is None:
-            # NULL pointer in C
-            handler = response_handler()
+    def NewMrpcCall(key: str, message: str, handler):
         return MrpcCall(
             key=key.encode(),
-            message=message.encode() if message is not None else None,
+            message=message.encode(),
             handler=handler,
         )
 
@@ -40,12 +37,6 @@ lib.mrpc_destroy_client.restype = None
 
 lib.mrpc_send_request.argtypes = [ctypes.POINTER(MrpcClient), ctypes.POINTER(MrpcCall)]
 lib.mrpc_send_request.restype = ctypes.c_int
-
-lib.mrpc_receive_response.argtypes = [
-    ctypes.POINTER(MrpcClient),
-    ctypes.POINTER(MrpcCall),
-]
-lib.mrpc_receive_response.restype = ctypes.c_int
 
 lib.mrpc_get_unique_id.argtypes = [cchar_p, cchar_p]
 lib.mrpc_get_unique_id.restype = ctypes.c_int

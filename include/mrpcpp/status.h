@@ -6,11 +6,17 @@
 
 namespace mrpc {
 enum StatusCode {
+  // mrpc_status
   OK,
   CANCELED,
-  FAILURE,
+  MRPC_SEND_FAILURE,
+  MRPC_PARSE_FAILURE,
+  // json parse
+  PARSE_FROM_JSON_FAILURE,
+  PARSE_TO_JSON_FAILURE,
 };
 
+// TODO： implement custom exception
 class Status {
 public:
   Status() : code_(StatusCode::OK) {}
@@ -21,12 +27,7 @@ public:
       : code_(code), message_(error_message) {}
 
   Status(mrpc_status mrpc_code, const std::string &error_message)
-      : code_(static_cast<StatusCode>(mrpc_code)),
-        message_(error_message) {}
-
-  static Status FAILURE(const std::string &error_message) {
-    return Status(StatusCode::FAILURE, error_message);
-  }
+      : code_(static_cast<StatusCode>(mrpc_code)), message_(error_message) {}
 
   bool ok() const { return code_ == StatusCode::OK; }
 
@@ -34,10 +35,10 @@ public:
 
   std::string message() const { return message_; }
 
-  Status& operator<<(const std::string &message) {
+  Status &operator<<(const std::string &message) {
     message_ += message;
     return *this;
-}
+  }
 
 private:
   StatusCode code_;

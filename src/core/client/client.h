@@ -6,7 +6,6 @@
 
 #include "mrpc/mrpc.h"
 
-
 #include <iostream>
 #include <thread>
 
@@ -31,10 +30,11 @@ public:
 
   mrpc_status Send(mrpc_call *call);
 
-  mrpc_status Receive(mrpc_call *call);
-
 private:
-  void _init_channel() { channel_ = Channel::Create(io_, target_); }
+  void _init_channel() {
+    channel_ = Channel::Create(io_, target_);
+    channel_->Connect();
+  }
 
 private:
   boost::asio::io_context io_;

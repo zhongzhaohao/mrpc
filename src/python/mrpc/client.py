@@ -1,11 +1,17 @@
 import ctypes
 import threading
-from typing import Callable, Any
+from typing import Callable, TypeAlias
 
-from .id import rpc_id
-from .status import Status
+from .status import MrpcErrorFrom
 from .json import ParseFromJson, ParseToJson
 from .defs import response_handler, lib, MrpcCall
+from .queue import ClientQueue
+
+
+def rpc_id(func: str) -> str:
+    buf = ctypes.create_string_buffer(128)
+    lib.mrpc_get_unique_id(func.encode(), buf)
+    return buf.value.decode()
 
 
 g_callbacks = {}
@@ -17,18 +23,21 @@ callback_lock = threading.Lock()
 
 
 @response_handler
-def GlobalRpcCallback(key: bytes, result: bytes):
-    key_str = key.decode() if key else ""
-    result_str = result.decode() if result else ""
+def GlobalRpcCallback(key: bytes, result: bytes, status: int):
+    key_str = key.decode()
+    result_str = result.decode()
+    err = MrpcErrorFrom(status)
 
     with callback_lock:
         cb = g_callbacks.pop(key_str, None)
 
-    if cb:
-        cb(result_str)
+    cb(result_str, err)
 
 
-def RegisterRpcCallback(key: str, callback: Callable[[str], None]):
+Callback: TypeAlias = Callable[[str, Exception | None], None]
+
+
+def RegisterRpcCallback(key: str, callback: Callback):
     with callback_lock:
         g_callbacks[key] = callback
 
@@ -36,6 +45,7 @@ def RegisterRpcCallback(key: str, callback: Callable[[str], None]):
 class Client:
     def __init__(self, addr: str):
         self.client = lib.mrpc_create_client(addr.encode())
+        self.queue = ClientQueue()
 
     def __del__(self):
         lib.mrpc_destroy_client(self.client)
@@ -51,23 +61,29 @@ class Client:
     def AsyncSend(
         self, func: str, request: ParseToJson
     ) -> tuple[str, Exception | None]:
-        req = request.toString()
-        key = rpc_id(func)
-        call = MrpcCall.NewMrpcCall(key, req)
-        status = Status.From(lib.mrpc_send_request(self.client, ctypes.byref(call)))
-        if status.ok():
-            return key, None
-        else:
-            return "", status.with_message(f"send func: {func} error")
+        try:
+            req = request.toString()
+            key = rpc_id(func)
+
+            self.queue.wait_result(key)
+
+            def callback(result: str, err: Exception | None):
+                self.queue.set_result(key, result, err)
+
+            err = self.send(key, req, callback)
+            if err == None:
+                return key, None
+            else:
+                return "", err
+        except Exception as e:
+            return "", err
 
     def Receive(self, key: str, response: ParseFromJson) -> Exception | None:
-        call = MrpcCall.NewMrpcCall(key)
-        status = Status.From(lib.mrpc_receive_response(self.client, ctypes.byref(call)))
-        if status.ok():
-            response.fromString(call.message.decode())
-            return None
-        else:
-            return status.with_message(f"receive func: {key} error")
+        result, err = self.queue.get_result(key)
+        try:
+            response.fromString(result)
+        except Exception as e:
+            return e
 
     def CallbackSend(
         self,
@@ -76,17 +92,27 @@ class Client:
         response: ParseFromJson,
         receive: Callable[[Exception | None], None],
     ):
-        req = request.toString()
-        key = rpc_id(func)
+        try:
+            req = request.toString()
+            key = rpc_id(func)
 
-        def callback(result: str):
-            response.fromString(result)
-            receive(None)
+            def callback(result: str, err: Exception | None):
+                if err != None:
+                    receive(err)
+                    return
+                try:
+                    response.fromString(result)
+                    receive(None)
+                except Exception as e:
+                    receive(e)
 
+            err = self.send(key, req, callback)
+            if err != None:
+                receive(err)
+        except Exception as s:
+            receive(s)
+
+    def send(self, key: str, request: str, callback: Callback) -> Exception | None:
         RegisterRpcCallback(key, callback)
-
-        call = MrpcCall.NewMrpcCall(key, req, GlobalRpcCallback)
-
-        status = Status.From(lib.mrpc_send_request(self.client, ctypes.byref(call)))
-        if not status.ok():
-            receive(status.with_message(f"send func: {func} error"))
+        call = MrpcCall.NewMrpcCall(key, request, GlobalRpcCallback)
+        return MrpcErrorFrom(lib.mrpc_send_request(self.client, ctypes.byref(call)))

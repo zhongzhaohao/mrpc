@@ -12,6 +12,34 @@ std::string rpc_id(const std::string &func) {
 
 namespace mrpc {
 
+// cchar_t = const char
+using Callback = std::function<void(cchar_t *, mrpc_status)>;
+
+std::map<std::string, Callback> g_callbacks;
+std::mutex g_callback_mutex;
+
+extern "C" void GlobalRpcCallback(cchar_t *key, cchar_t *result,
+                                  mrpc_status status) {
+  Callback cb;
+
+  {
+    std::lock_guard<std::mutex> lock(g_callback_mutex);
+    auto it = g_callbacks.find(key);
+    assert(it != g_callbacks.end());
+    cb = it->second;
+    g_callbacks.erase(it);
+  }
+
+  if (cb) {
+    cb(result, status);
+  }
+}
+
+void RegisterRpcCallback(const std::string &key, Callback cb) {
+  std::lock_guard<std::mutex> lock(g_callback_mutex);
+  g_callbacks[key] = std::move(cb);
+}
+
 MRPCClient::MRPCClient(const std::string &addr) {
   client_ = mrpc_create_client(addr.c_str());
 }
@@ -32,8 +60,23 @@ mrpc::Status MRPCClient::AsyncSend(const std::string &func,
                                    ParseToJson &request) {
   auto req = request.toString();
   auto key = rpc_id(func);
-  mrpc_call call{key.c_str(), req.c_str(), nullptr};
+
+  queue_.wait_result(key);
+
+  auto callback = [key, this](cchar_t *result, mrpc_status s) {
+    queue_.set_result(key, result, Status(s));
+  };
+
+  RegisterRpcCallback(key, callback);
+
+  mrpc_call call{
+      key.c_str(),
+      req.c_str(),
+      GlobalRpcCallback,
+  };
+
   Status status = mrpc_send_request(client_, &call);
+
   if (status.ok()) {
     return status << key;
   } else {
@@ -43,46 +86,22 @@ mrpc::Status MRPCClient::AsyncSend(const std::string &func,
 
 mrpc::Status MRPCClient::Receive(const std::string &key,
                                  ParseFromJson &response) {
-  mrpc_call call{key.c_str(), nullptr};
-  Status status = mrpc_receive_response(client_, &call);
-
-  response.fromString(std::string(call.message));
-  // 这里需要手动delete，不然会内存泄漏
-  delete call.message;
-
-  if (status.ok()) {
-    return status;
-  } else {
+  while (!queue_.success(key)) {
+  }
+  auto [result, status] = queue_.get_result(key);
+  if (!status.ok()) {
+    // MRPC_PARSE_FAILURE
     return status << "receive func : " << key << "error";
   }
-}
 
-// cchar_t = const char
-using Callback = std::function<void(cchar_t *)>;
-
-std::map<std::string, std::function<void(cchar_t *)>> g_callbacks;
-std::mutex g_callback_mutex;
-
-extern "C" void GlobalRpcCallback(cchar_t *key, cchar_t *result) {
-  Callback cb;
-
-  {
-    std::lock_guard<std::mutex> lock(g_callback_mutex);
-    auto it = g_callbacks.find(key);
-    if (it != g_callbacks.end()) {
-      cb = it->second;
-      g_callbacks.erase(it);
-    }
+  try {
+    response.fromString(std::string(result));
+  } catch (const std::exception &e) {
+    return Status(PARSE_FROM_JSON_FAILURE, e.what());
   }
+  // timeout ?
 
-  if (cb) {
-    cb(result);
-  }
-}
-
-void RegisterRpcCallback(const std::string &key, Callback cb) {
-  std::lock_guard<std::mutex> lock(g_callback_mutex);
-  g_callbacks[key] = std::move(cb);
+  return status;
 }
 
 void MRPCClient::CallbackSend(const std::string &func, ParseToJson &request,
@@ -91,8 +110,21 @@ void MRPCClient::CallbackSend(const std::string &func, ParseToJson &request,
   auto req = request.toString();
   auto key = rpc_id(func);
 
-  auto callback = [&response, receive](cchar_t *result) {
-    response.fromString(result);
+  auto callback = [&response, receive](cchar_t *result, mrpc_status s) {
+    auto status = Status(s);
+    if (!status.ok()) {
+      // core lib error
+      receive(status);
+      return;
+    }
+
+    try {
+      response.fromString(result);
+    } catch (const std::exception &e) {
+      receive(Status(PARSE_FROM_JSON_FAILURE, e.what()));
+      return;
+    }
+
     receive(Status());
   };
 
