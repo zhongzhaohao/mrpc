@@ -16,6 +16,6 @@ py_library(
     imports = ["."],
     visibility = ["//visibility:public"],
     deps = [
-        "//src/core:rpc_client",
+        "//src/core:librpc_client.so",
     ],
 )

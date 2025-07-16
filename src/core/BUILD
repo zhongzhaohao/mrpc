@@ -54,6 +54,8 @@ cc_library(
     srcs = ["common/id.cc"],
     hdrs = ["common/c_cpp_trans.h"],
     visibility = ["//visibility:__pkg__"],
-    deps = ["//:mrpc_core_headers"],
+    deps = [
+        "//include:mrpc_core_headers",
+    ],
     alwayslink = True,
 )

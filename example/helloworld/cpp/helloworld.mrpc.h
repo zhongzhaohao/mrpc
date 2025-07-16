@@ -34,9 +34,9 @@ public:
   std::string message;
 };
 
-class HelloStub : mrpc::MRPCClient {
+class HelloStub : mrpc::MrpcClient {
 public:
-  HelloStub(const std::string &addr) : mrpc::MRPCClient(addr) {}
+  HelloStub(const std::string &addr) : mrpc::MrpcClient(addr) {}
 
   mrpc::Status SayHello(SayHelloRequest &request, SayHelloResponse &response) {
     return Send(Hello_method_names[0], request, response);
@@ -51,6 +51,6 @@ public:
   }
 
   mrpc::Status Receive(const std::string &key, SayHelloResponse &response) {
-    return mrpc::MRPCClient::Receive(key,response);
+    return mrpc::MrpcClient::Receive(key,response);
   }
 };

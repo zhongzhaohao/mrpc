@@ -53,23 +53,3 @@ py_library(
         "//src/python:mrpc-python-frontend",
     ],
 )
-
-# ============== headers ================
-
-cc_library(
-    name = "mrpcpp_hearders",
-    hdrs = glob(["include/mrpcpp/*.h"]),
-    includes = ["include"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        "mrpc_core_headers",
-    ],
-)
-
-cc_library(
-    name = "mrpc_core_headers",
-    hdrs = glob(["include/mrpc/*.h"]),
-    includes = ["include"],
-    visibility = ["//:__subpackages__"],
-    # alwayslink = True,
-)

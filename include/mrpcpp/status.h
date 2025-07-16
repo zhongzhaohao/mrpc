@@ -5,6 +5,7 @@
 #include "mrpc/mrpc.h"
 
 namespace mrpc {
+
 enum StatusCode {
   // mrpc_status
   OK,

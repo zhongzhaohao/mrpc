@@ -7,8 +7,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//include:mrpcpp_hearders",
         "//src/core:rpc_client",
-        "//:mrpcpp_hearders",
-        "@nlohmann_json//:json",
     ],
 )
