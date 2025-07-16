@@ -4,7 +4,6 @@ from typing import Callable
 
 Callback = Callable[[str, Exception | None], None]
 
-Result = tuple[str, Exception | None]
 
 HELLO_METHOD_NAMES = ["/Hello/SayHello"]
 
@@ -29,23 +28,25 @@ class SayHelloResponse(mrpc.ParseFromJson):
 class HelloClient(mrpc.Client):
     def __init__(self, server_address: str):
         super().__init__(server_address)
-        self.response = SayHelloResponse()
 
-    def SayHello(self, request: SayHelloRequest) -> Result:
-        err = super().Send(HELLO_METHOD_NAMES[0], request, self.response)
-        return self.response.message, err
+    def SayHello(self, request: SayHelloRequest) -> tuple[str, Exception | None]:
+        response = SayHelloResponse()
+        err = super().Send(HELLO_METHOD_NAMES[0], request, response)
+        return response.message, err
 
-    def AsyncSayHello(self, request: SayHelloRequest) -> Result:
+    def AsyncSayHello(self, request: SayHelloRequest) -> tuple[str, Exception | None]:
         return super().AsyncSend(HELLO_METHOD_NAMES[0], request)
 
     def CallbackSayHello(self, request: SayHelloRequest, callback: Callback):
+        response = SayHelloResponse()
         super().CallbackSend(
             HELLO_METHOD_NAMES[0],
             request,
-            self.response,
-            lambda err: callback(self.response.message, err),
+            response,
+            lambda err: callback(response.message, err),
         )
 
-    def ReceiveSayHello(self, key: str) -> Result:
-        err = super().Receive(key, self.response)
-        return self.response.message, err
+    def ReceiveSayHello(self, key: str) -> tuple[str, Exception | None]:
+        response = SayHelloResponse()
+        err = super().Receive(key, response)
+        return response.message, err

@@ -21,29 +21,28 @@ func (r *SayHelloRequest) ToString() (string, error) {
 	return string(data), nil
 }
 
-type sayHelloResponse struct {
+type SayHelloResponse struct {
 	Message string `json:"message"`
 }
 
-func (r *sayHelloResponse) FromString(data string) error {
+func (r *SayHelloResponse) FromString(data string) error {
 	return json.Unmarshal([]byte(data), r)
 }
 
 type HelloClient struct {
-	client   *mrpc.Client
-	response *sayHelloResponse
+	client *mrpc.Client
 }
 
 func NewHelloClient(s string) *HelloClient {
 	return &HelloClient{
-		client:   mrpc.NewClient(s),
-		response: &sayHelloResponse{""},
+		client: mrpc.NewClient(s),
 	}
 }
 
 func (h *HelloClient) SayHello(request *SayHelloRequest) (string, error) {
-	err := h.client.Send(Hello_method_names[0], request, h.response)
-	return h.response.Message, err
+	response := &SayHelloResponse{}
+	err := h.client.Send(Hello_method_names[0], request, response)
+	return response.Message, err
 }
 
 func (h *HelloClient) AsyncSayHello(request *SayHelloRequest) (string, error) {
@@ -51,14 +50,16 @@ func (h *HelloClient) AsyncSayHello(request *SayHelloRequest) (string, error) {
 }
 
 func (h *HelloClient) CallbackSayHello(request *SayHelloRequest, callback func(string, error)) {
-	h.client.CallbackSend(Hello_method_names[0], request, h.response, func(err error) {
-		callback(h.response.Message, err)
+	response := &SayHelloResponse{}
+	h.client.CallbackSend(Hello_method_names[0], request, response, func(err error) {
+		callback(response.Message, err)
 	})
 }
 
 func (h *HelloClient) Receive(key string) (string, error) {
-	err := h.client.Receive(key, h.response)
-	return h.response.Message, err
+	response := &SayHelloResponse{}
+	err := h.client.Receive(key, response)
+	return response.Message, err
 }
 
 func (h *HelloClient) Close() {
