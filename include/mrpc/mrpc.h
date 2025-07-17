@@ -36,6 +36,28 @@ MRPC_API mrpc_status mrpc_send_request(mrpc_client *client, mrpc_call *call);
 
 MRPC_API int mrpc_get_unique_id(const char *func, char *buf);
 
+// Server API
+typedef struct mrpc_server mrpc_server;
+
+typedef void (*request_handler)(const char *key, const char *request, 
+                               const char **response, mrpc_status *status);
+
+typedef struct mrpc_service {
+  const char *name;
+  const char **methods;
+  request_handler *handlers;
+  int method_count;
+} mrpc_service;
+
+MRPC_API mrpc_server *mrpc_create_server(const char *addr);
+
+MRPC_API void mrpc_destroy_server(mrpc_server *server);
+
+MRPC_API mrpc_status mrpc_register_service(mrpc_server *server, 
+                                           mrpc_service *service);
+
+MRPC_API mrpc_status mrpc_start_server(mrpc_server *server);
+
 #ifdef __cplusplus
 }
 #endif

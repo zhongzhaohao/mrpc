@@ -11,3 +11,15 @@ cc_library(
         "//src/core:rpc_client",
     ],
 )
+
+cc_library(
+    name = "mrpc-cpp-server-frontend",
+    srcs = [
+        "server.cc",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//include:mrpcpp_hearders",
+        "//src/core:rpc_server",
+    ],
+)

@@ -59,3 +59,50 @@ cc_library(
     ],
     alwayslink = True,
 )
+
+# Server libraries
+cc_binary(
+    name = "librpc_server.so",
+    srcs = [":rpc_server"],
+    linkopts = ["-Wl,--export-dynamic"],
+    linkshared = True,
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":rpc_server",
+    ],
+)
+
+cc_library(
+    name = "rpc_server",
+    srcs = [
+        "server/server.cc",
+    ],
+    hdrs = [
+        "server/server.h",
+        "server/target.h",
+    ],
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [
+        ":server_connection",
+    ],
+    alwayslink = True,
+)
+
+cc_library(
+    name = "server_connection",
+    srcs = [
+        "server/connection.cc",
+    ],
+    hdrs = [
+        "server/connection.h",
+        "server/target.h",
+    ],
+    visibility = ["//visibility:__pkg__"],
+    deps = [
+        ":common",
+        "@boost.asio//:boost.asio",
+    ],
+)
