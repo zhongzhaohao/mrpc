@@ -26,17 +26,13 @@ public:
     SayHelloRequest request(user);
     SayHelloResponse response;
 
-    mrpc::Status status = stub_->AsyncSayHello(request);
     std::string key;
+    mrpc::Status status = stub_->AsyncSayHello(request, key);
 
     if (!status.ok()) {
       std::cout << status.error_code() << ": " << status.message() << std::endl;
       return "Async RPC failed";
     }
-
-    std::cout << "do something" << std::endl;
-
-    key = status.message();
 
     status = stub_->Receive(key, response);
     if (status.ok()) {

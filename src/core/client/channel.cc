@@ -1,33 +1,9 @@
-#include "channel.h"
+#include "src/core/client/channel.h"
+#include "src/core/common/parser.h"
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/read_until.hpp>
 #include <iostream>
 // #include <Python.h>
-
-static const std::string CALL_DELIMITER = "#MRPC#";
-static const std::string KEY_DELIMITER = "#-#";
-
-std::string GetSendMessage(mrpc_call *call) {
-  std::ostringstream oss;
-  oss << call->key << KEY_DELIMITER << call->message << CALL_DELIMITER;
-  return oss.str();
-}
-
-std::tuple<std::string, std::string, mrpc_status>
-ParseMessage(const std::string &input) {
-  size_t key_delim_pos = input.find(KEY_DELIMITER);
-  size_t call_delim_pos = input.find(CALL_DELIMITER);
-
-  if (key_delim_pos == std::string::npos ||
-      call_delim_pos == std::string::npos || call_delim_pos <= key_delim_pos) {
-    return {"", "", MRPC_PARSE_FAILURE};
-  }
-
-  return {input.substr(0, key_delim_pos),
-          input.substr(key_delim_pos + KEY_DELIMITER.length(),
-                       call_delim_pos - key_delim_pos - KEY_DELIMITER.length()),
-          MRPC_OK};
-}
 
 // class PythonGilHolder
 // {
@@ -41,8 +17,9 @@ ParseMessage(const std::string &input) {
 
 namespace mrpc {
 
-Channel::Channel(io_context &ctx, Target &target)
-    : socket_(tcp::socket(ctx)), resolver_(ctx), target_(target), data_(2048) {}
+Channel::Channel(io_context &ctx, Target &target, response_handler handler)
+    : socket_(tcp::socket(ctx)), resolver_(ctx), target_(target), data_(2048),
+      handler_(handler) {}
 
 void Channel::Connect(std::function<void()> func) {
   // CONNECTING or NOT_CONNECT
@@ -112,13 +89,12 @@ void Channel::OnRead(const boost::system::error_code &ec) {
 
     // std::cout << "Received message: " << buffer_content << "\n";
 
-    auto [key, result, status] = ParseMessage(buffer_content);
+    auto [key, response, status] = ParseMessage(buffer_content);
 
     {
       // 目前暂时不考虑并发的情况，如果并发则需要获取GIL
       // PythonGilHolder gil;
-      auto handler = wait_result_queue.consume_with_handler(key);
-      handler(key.c_str(), result.c_str(), status);
+      handler_(key.c_str(), response.c_str(), status);
     }
   }
   DoRead();
@@ -144,8 +120,6 @@ mrpc_status Channel::Send(mrpc_call *call) {
       }
     }
 
-    wait_result_queue.add(call);
-
     auto send_message = GetSendMessage(call);
 
     auto write_buf = boost::asio::buffer(send_message);
@@ -153,13 +127,13 @@ mrpc_status Channel::Send(mrpc_call *call) {
     boost::asio::async_write(
         socket_, std::move(write_buf),
         [self, call](const boost::system::error_code &ec,
-                     size_t /*bytes_transferred*/) {
+                           size_t /*bytes_transferred*/) {
           if (ec) {
 #ifndef NDEBUG
             std::cerr << "Write error for req [" << call->key
                       << "] : " << ec.message() << std::endl;
 #endif
-            call->handler(call->key, ec.message().c_str(), MRPC_SEND_FAILURE);
+            self->handler_(call->key, ec.message().c_str(), MRPC_SEND_FAILURE);
           }
         });
     return MRPC_OK;

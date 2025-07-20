@@ -1,37 +1,57 @@
-#include <iostream>
-#include <string>
-#include <cstring>
 #include "helloworld.mrpc.h"
-#include "hello_handler.h"
+#include <atomic>
+#include <condition_variable>
+#include <csignal>
+#include <iostream>
+#include <mutex>
+#include <string>
+
+std::atomic<bool> stop_signal_received(false);
+std::mutex cv_mutex;
+std::condition_variable cv;
+
+void signal_handler(int signal) {
+  if (signal == SIGINT || signal == SIGTERM) {
+    std::cout << "Signal " << signal << " received." << std::endl;
+    stop_signal_received = true;
+    cv.notify_all(); // 唤醒等待线程
+  }
+}
+
+class HelloServiceImpl : public HelloService {
+public:
+  mrpc::Status SayHello(const SayHelloRequest &request,
+                        SayHelloResponse &response) override {
+    response.message = "Hello " + request.name;
+    return mrpc::Status::OK();
+  }
+};
 
 int main() {
-  // 创建服务器
-  mrpc::MrpcServer server("0.0.0.0:8080");
-  
-  // 创建Hello服务
-  auto hello_service = std::make_shared<HelloService>();
-  
-  // 注册SayHello方法的处理函数
-  hello_service->RegisterMethod("SayHello", HandleSayHello);
-  
-  // 注册服务到服务器
-  mrpc::Status status = server.RegisterService(hello_service);
-  if (!status.ok()) {
-    std::cerr << "Failed to register service: " << status.message() << std::endl;
-    return 1;
-  }
-  
-  // 启动服务器
-  status = server.Start();
+
+  HelloServiceImpl hello_service;
+
+  auto server = mrpc::server::MrpcServer::Create("0.0.0.0:8080");
+
+  server->RegisterService(&hello_service);
+
+  auto status = server->Start();
   if (!status.ok()) {
     std::cerr << "Failed to start server: " << status.message() << std::endl;
     return 1;
   }
-  
-  std::cout << "Server started successfully, listening on 0.0.0.0:8080" << std::endl;
-  
-  // 阻塞等待
-  server.Wait();
-  
+
+  std::cout << "Server started successfully, listening on 0.0.0.0:8080"
+            << std::endl;
+
+  std::signal(SIGINT, signal_handler);
+  std::signal(SIGTERM, signal_handler);
+
+  std::unique_lock<std::mutex> lock(cv_mutex);
+  cv.wait(lock, [] { return stop_signal_received.load(); });
+
+  server->Stop();
+  std::cout << "Server stopped." << std::endl;
+
   return 0;
 }

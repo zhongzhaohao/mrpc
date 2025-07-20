@@ -15,15 +15,17 @@ type StatusCode int
 
 const (
 	// mrpc_status
-	CANCELED           StatusCode = 1
-	MRPC_SEND_FAILURE  StatusCode = 2
-	MRPC_PARSE_FAILURE StatusCode = 3
+	CANCELED                  StatusCode = 1
+	MRPC_SEND_FAILURE         StatusCode = 2
+	MRPC_PARSE_FAILURE        StatusCode = 3
+	MRPC_CONNECTION_NOT_FOUND StatusCode = 4
 )
 
 var statusCodeMessages = map[StatusCode]string{
-	CANCELED:           "Operation was canceled",
-	MRPC_SEND_FAILURE:  "Failed to send mrpc message",
-	MRPC_PARSE_FAILURE: "Failed to parse mrpc response",
+	CANCELED:                  "Operation was canceled",
+	MRPC_SEND_FAILURE:         "Failed to send mrpc message",
+	MRPC_PARSE_FAILURE:        "Failed to parse mrpc response",
+	MRPC_CONNECTION_NOT_FOUND: "CONNECTION NOT FOUND",
 }
 
 type MrpcError struct {

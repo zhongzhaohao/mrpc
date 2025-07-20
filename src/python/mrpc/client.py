@@ -44,7 +44,7 @@ def RegisterRpcCallback(key: str, callback: Callback):
 
 class Client:
     def __init__(self, addr: str):
-        self.client = lib.mrpc_create_client(addr.encode())
+        self.client = lib.mrpc_create_client(addr.encode(),GlobalRpcCallback)
         self.queue = ClientQueue()
 
     def __del__(self):
@@ -114,5 +114,5 @@ class Client:
 
     def send(self, key: str, request: str, callback: Callback) -> Exception | None:
         RegisterRpcCallback(key, callback)
-        call = MrpcCall.NewMrpcCall(key, request, GlobalRpcCallback)
+        call = MrpcCall.NewMrpcCall(key, request)
         return MrpcErrorFrom(lib.mrpc_send_request(self.client, ctypes.byref(call)))

@@ -9,7 +9,7 @@ package mrpc
 #include <string.h>
 
 // 声明 Go 导出函数
-void GlobalRpcCallback(cchar_t *key, cchar_t *result, mrpc_status status);
+void GlobalRpcCallback(cchar_t *key, cchar_t *response, mrpc_status status);
 */
 import "C"
 
@@ -40,7 +40,7 @@ func NewClient(addr string) *Client {
 	cAddr := C.CString(addr)
 	defer C.free(unsafe.Pointer(cAddr))
 	return &Client{
-		cClient: C.mrpc_create_client(cAddr),
+		cClient: C.mrpc_create_client(cAddr, (C.response_handler)(unsafe.Pointer(C.GlobalRpcCallback))),
 		queue:   newClientQueue(),
 	}
 }
@@ -80,7 +80,6 @@ func (c *Client) send(key string, request string, callback Callback) error {
 	cCall := C.mrpc_call{
 		key:     keyC,
 		message: messageC,
-		handler: (C.response_handler)(unsafe.Pointer(C.GlobalRpcCallback)),
 	}
 
 	return FromMrpcError(C.mrpc_send_request(c.cClient, &cCall))

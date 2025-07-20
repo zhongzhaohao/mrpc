@@ -1,5 +1,4 @@
 #include "mrpcpp/client.h"
-#include "mrpcpp/callback.h"
 
 std::string rpc_id(const std::string &func) {
   const size_t buf_size = 128;
@@ -8,28 +7,53 @@ std::string rpc_id(const std::string &func) {
   return std::string(buf);
 }
 
-namespace mrpc {
+namespace mrpc::client {
+
+std::map<std::string, Callback> g_callbacks;
+std::mutex g_callback_mutex;
+
+void ClientCallback(cchar_t *key, cchar_t *result, mrpc_status status) {
+  Callback cb;
+
+  {
+    std::lock_guard<std::mutex> lock(g_callback_mutex);
+    auto it = g_callbacks.find(key);
+    assert(it != g_callbacks.end());
+    cb = it->second;
+    g_callbacks.erase(it);
+  }
+
+  if (cb) {
+    cb(result, status);
+  }
+}
+
+void RegisterRpcCallback(const std::string &key, Callback cb) {
+  std::lock_guard<std::mutex> lock(g_callback_mutex);
+  g_callbacks[key] = std::move(cb);
+}
 
 MrpcClient::MrpcClient(const std::string &addr) {
-  client_ = mrpc_create_client(addr.c_str());
+  client_ = mrpc_create_client(addr.c_str(), ClientCallback);
 }
 
 MrpcClient::~MrpcClient() { mrpc_destroy_client(client_); }
 
-Status MrpcClient::Send(const std::string &func, ParseToJson &request,
-                        ParseFromJson &response) {
-  auto status = AsyncSend(func, request);
+Status MrpcClient::Send(const std::string &func, Parser &request,
+                        Parser &response) {
+  std::string key;
+  auto status = AsyncSend(func, request, key);
   if (!status.ok()) {
     return status;
   }
 
-  return Receive(status.message(), response);
+  return Receive(key, response);
 }
 
-mrpc::Status MrpcClient::AsyncSend(const std::string &func,
-                                   ParseToJson &request) {
+mrpc::Status MrpcClient::AsyncSend(const std::string &func, Parser &request,
+                                   std::string &key) {
   auto req = request.toString();
-  auto key = rpc_id(func);
+  key = rpc_id(func);
 
   queue_.wait_result(key);
 
@@ -37,15 +61,7 @@ mrpc::Status MrpcClient::AsyncSend(const std::string &func,
     queue_.set_result(key, result, Status(s));
   };
 
-  RegisterRpcCallback(key, callback);
-
-  mrpc_call call{
-      key.c_str(),
-      req.c_str(),
-      GlobalRpcCallback,
-  };
-
-  Status status = mrpc_send_request(client_, &call);
+  auto status = send(key, req, callback);
 
   if (status.ok()) {
     return status << key;
@@ -54,8 +70,7 @@ mrpc::Status MrpcClient::AsyncSend(const std::string &func,
   }
 }
 
-mrpc::Status MrpcClient::Receive(const std::string &key,
-                                 ParseFromJson &response) {
+mrpc::Status MrpcClient::Receive(const std::string &key, Parser &response) {
   auto [result, status] = queue_.get_result(key);
   if (!status.ok()) {
     // MRPC_PARSE_FAILURE
@@ -72,8 +87,8 @@ mrpc::Status MrpcClient::Receive(const std::string &key,
   return status;
 }
 
-void MrpcClient::CallbackSend(const std::string &func, ParseToJson &request,
-                              ParseFromJson &response,
+void MrpcClient::CallbackSend(const std::string &func, Parser &request,
+                              Parser &response,
                               std::function<void(mrpc::Status)> receive) {
   auto req = request.toString();
   auto key = rpc_id(func);
@@ -96,19 +111,23 @@ void MrpcClient::CallbackSend(const std::string &func, ParseToJson &request,
     receive(Status());
   };
 
-  RegisterRpcCallback(key, callback);
-
-  mrpc_call call{
-      key.c_str(),
-      req.c_str(),
-      GlobalRpcCallback,
-  };
-
-  Status status = mrpc_send_request(client_, &call);
+  auto status = send(key, req, callback);
 
   if (!status.ok()) {
     receive(status);
   }
 }
 
-} // namespace mrpc
+Status MrpcClient::send(const std::string &key, const std::string &req,
+                        Callback cb) {
+  RegisterRpcCallback(key, cb);
+
+  mrpc_call call{
+      key.c_str(),
+      req.c_str(),
+  };
+
+  return mrpc_send_request(client_, &call);
+}
+
+} // namespace mrpc::client

@@ -52,7 +52,7 @@ cc_library(
 cc_library(
     name = "common",
     srcs = ["common/id.cc"],
-    hdrs = ["common/c_cpp_trans.h"],
+    hdrs = glob(["common/*.h"]),
     visibility = ["//visibility:__pkg__"],
     deps = [
         "//include:mrpc_core_headers",

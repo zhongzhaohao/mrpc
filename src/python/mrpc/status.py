@@ -2,6 +2,7 @@ class MrpcError(Exception):
     CANCELED = None
     MRPC_SEND_FAILURE = None
     MRPC_PARSE_FAILURE = None
+    MRPC_CONNECTION_NOT_FOUND = None
 
     def __init__(self, code: int, message: str = ""):
         self.code = code
@@ -19,6 +20,7 @@ class MrpcError(Exception):
 MrpcError.CANCELED = MrpcError(1, "Operation was canceled")
 MrpcError.MRPC_SEND_FAILURE = MrpcError(2, "Failed to send mrpc message")
 MrpcError.MRPC_PARSE_FAILURE = MrpcError(3, "Failed to parse mrpc response")
+MrpcError.MRPC_CONNECTION_NOT_FOUND = MrpcError(4,"CONNECTION NOT FOUND")
 
 def MrpcErrorFrom(code: int) -> MrpcError | None:
     if code == 0:
@@ -29,5 +31,7 @@ def MrpcErrorFrom(code: int) -> MrpcError | None:
         return MrpcError.MRPC_SEND_FAILURE
     elif code == 3:
         return MrpcError.MRPC_PARSE_FAILURE
+    elif code ==4:
+        return MrpcError.MRPC_CONNECTION_NOT_FOUND
     else:
         raise ValueError(f"Unknown status code: {code}")

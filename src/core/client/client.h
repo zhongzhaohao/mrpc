@@ -15,9 +15,10 @@ using tcp = asio::ip::tcp;
 namespace mrpc {
 class Client : public CppImplOf<Client, mrpc_client> {
 public:
-  Client(const std::string &addr)
+  Client(const std::string &addr, response_handler handler)
       : io_(), work_guard_(boost::asio::make_work_guard(io_)),
-        io_thread_(std::thread([this] { io_.run(); })), target_(addr) {}
+        io_thread_(std::thread([this] { io_.run(); })), target_(addr),
+        handler_(handler) {}
 
   ~Client() {
     std::cout << "clear rpc client" << std::endl;
@@ -32,7 +33,7 @@ public:
 
 private:
   void _init_channel() {
-    channel_ = Channel::Create(io_, target_);
+    channel_ = Channel::Create(io_, target_, handler_);
     channel_->Connect();
   }
 
@@ -44,5 +45,6 @@ private:
   Target target_;
   std::shared_ptr<Channel> channel_;
   std::once_flag channel_flag_;
+  response_handler handler_;
 };
 } // namespace mrpc

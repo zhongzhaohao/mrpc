@@ -1,12 +1,28 @@
 #pragma once
 
+// #include "callback.h"
 #include "json.h"
 #include "status.h"
 #include <condition_variable>
 #include <functional>
+#include <iostream>
 #include <mutex>
 
-namespace mrpc {
+#include "mrpc/mrpc.h"
+#include <cassert>
+#include <functional>
+#include <map>
+#include <mutex>
+#include <string>
+
+namespace mrpc::client {
+
+using Callback = std::function<void(cchar_t *, mrpc_status)>;
+
+extern "C" void ClientCallback(cchar_t *key, cchar_t *response,
+                               mrpc_status status);
+
+void RegisterRpcCallback(const std::string &key, Callback cb);
 
 struct Call {
   bool finish;
@@ -16,7 +32,6 @@ struct Call {
 
   Call() : cond_(std::make_unique<std::condition_variable>()) {}
 
-  // 链式赋值函数
   void set(bool f, const char *r, Status &&st) {
     finish = f;
     result = r;
@@ -62,22 +77,23 @@ class MrpcClient {
 public:
   MrpcClient(const std::string &addr);
 
-  ~MrpcClient();
+  virtual ~MrpcClient();
 
-  mrpc::Status Send(const std::string &func, ParseToJson &request,
-                    ParseFromJson &response);
+  mrpc::Status Send(const std::string &func, Parser &request, Parser &response);
 
-  mrpc::Status AsyncSend(const std::string &func, ParseToJson &request);
+  mrpc::Status AsyncSend(const std::string &func, Parser &request,
+                         std::string &key);
 
-  void CallbackSend(const std::string &func, ParseToJson &request,
-                    ParseFromJson &response,
+  void CallbackSend(const std::string &func, Parser &request, Parser &response,
                     std::function<void(mrpc::Status)> receive);
 
-  mrpc::Status Receive(const std::string &key, ParseFromJson &response);
+  mrpc::Status Receive(const std::string &key, Parser &response);
 
 private:
+  Status send(const std::string &key, const std::string &req, Callback cb);
+
   mrpc_client *client_;
   ClientQueue queue_;
 };
 
-} // namespace mrpc
+} // namespace mrpc::client

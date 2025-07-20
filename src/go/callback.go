@@ -6,7 +6,7 @@ package mrpc
 #include <mrpc/mrpc.h>
 
 // 声明 Go 导出函数
-void GlobalRpcCallback(cchar_t *key, cchar_t *result, mrpc_status status);
+void GlobalRpcCallback(cchar_t *key, cchar_t *response, mrpc_status status);
 */
 import "C"
 import "sync"
@@ -24,9 +24,9 @@ func RegisterRpcCallback(key string, cb Callback) {
 }
 
 //export GlobalRpcCallback
-func GlobalRpcCallback(key, result *C.cchar_t, status C.mrpc_status) {
+func GlobalRpcCallback(key, response *C.cchar_t, status C.mrpc_status) {
 	goKey := C.GoString(key)
-	goResult := C.GoString(result)
+	goResponse := C.GoString(response)
 	var err error
 	if status == C.MRPC_OK {
 		err = nil
@@ -42,5 +42,5 @@ func GlobalRpcCallback(key, result *C.cchar_t, status C.mrpc_status) {
 	delete(gCallbacks, goKey)
 	callbackMutex.Unlock()
 
-	cb(goResult, err)
+	cb(goResponse, err)
 }

@@ -1,4 +1,4 @@
-#include "client.h"
+#include "src/core/client/client.h"
 
 #define MRPC_API
 
@@ -10,8 +10,9 @@ mrpc_status Client::Send(mrpc_call *call) {
 
 } // namespace mrpc
 
-MRPC_API mrpc_client *mrpc_create_client(const char *addr) {
-  return (new mrpc::Client(addr))->c_ptr();
+MRPC_API mrpc_client *mrpc_create_client(const char *addr,
+                                         response_handler handler) {
+  return (new mrpc::Client(addr, handler))->c_ptr();
 }
 
 MRPC_API void mrpc_destroy_client(mrpc_client *client) {

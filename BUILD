@@ -35,15 +35,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "mrpc-cpp-server",
-    includes = ["include"],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//src/cpp:mrpc-cpp-server-frontend",
-    ],
-)
-
 # 这里要用嵌入，不能依赖
 go_library(
     name = "mrpc-go",

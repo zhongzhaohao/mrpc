@@ -19,7 +19,6 @@ public:
     mrpc_call save{
         strdup(call->key),
         strdup(call->message),
-        call->handler,
     };
     pending_requests_.emplace(call->key, save);
   }
@@ -32,17 +31,6 @@ public:
       erase(call);
     }
     pending_requests_.clear();
-  }
-
-  response_handler consume_with_handler(const std::string key) {
-    std::unique_lock<std::mutex> lock(pending_mutex_);
-    auto call = pending_requests_.find(key);
-    assert(call != pending_requests_.end());
-    auto handler = call->second.handler;
-    // 在消耗掉此call后需要回收strdup分配的内存
-    erase(call->second);
-    pending_requests_.erase(key);
-    return handler;
   }
 
 private:
@@ -85,11 +73,13 @@ class Channel : public std::enable_shared_from_this<Channel> {
 public:
   using ptr = std::shared_ptr<Channel>;
 
-  static ptr Create(boost::asio::io_context &io, Target &target) {
-    return std::make_shared<Channel>(io, target);
+  static ptr Create(boost::asio::io_context &io, Target &target,
+                    response_handler handler) {
+    return std::make_shared<Channel>(io, target, handler);
   }
 
-  Channel(boost::asio::io_context &ctx, Target &target);
+  Channel(boost::asio::io_context &ctx, Target &target,
+          response_handler handler);
 
   ~Channel();
 
@@ -108,12 +98,12 @@ private:
   tcp::resolver resolver_;
   Target target_;
 
-  rpc_event_queue wait_result_queue;
   rpc_event_queue pending_queue;
 
   connect_status connect_status_;
   std::mutex status_mutex_;
 
   boost::asio::streambuf data_;
+  response_handler handler_;
 };
 } // namespace mrpc

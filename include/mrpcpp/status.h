@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sstream>
 #include <string>
 
 #include "mrpc/mrpc.h"
@@ -12,15 +13,19 @@ enum StatusCode {
   CANCELED,
   MRPC_SEND_FAILURE,
   MRPC_PARSE_FAILURE,
+  MRPC_CONNECTION_NOT_FOUND,
   // json parse
   PARSE_FROM_JSON_FAILURE,
   PARSE_TO_JSON_FAILURE,
+  // RPC handler
+  RPC_HANDLER_FAILED,
 };
 
-// TODO： implement custom exception
 class Status {
 public:
   Status() : code_(StatusCode::OK) {}
+
+  static Status OK() { return Status(); };
 
   Status(mrpc_status mrpc_code) : code_(static_cast<StatusCode>(mrpc_code)) {}
 
@@ -34,7 +39,11 @@ public:
 
   StatusCode error_code() const { return code_; }
 
-  std::string message() const { return message_; }
+  std::string message() const {
+    std::ostringstream oss;
+    oss << "Code: " << code_ << ", Message: " << message_;
+    return oss.str();
+  }
 
   Status &operator<<(const std::string &message) {
     message_ += message;

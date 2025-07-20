@@ -5,7 +5,9 @@ from typing import Callable
 Callback = Callable[[str, Exception | None], None]
 
 
-HELLO_METHOD_NAMES = ["/Hello/SayHello"]
+HELLO_METHOD_NAMES = [
+    "/helloworld.Greeter/SayHello",
+]
 
 
 class SayHelloRequest(mrpc.ParseToJson):

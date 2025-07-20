@@ -10,16 +10,11 @@ class MrpcCall(ctypes.Structure):
     _fields_ = [
         ("key", cchar_p),
         ("message", cchar_p),
-        ("handler", response_handler),
     ]
 
     @staticmethod
-    def NewMrpcCall(key: str, message: str, handler):
-        return MrpcCall(
-            key=key.encode(),
-            message=message.encode(),
-            handler=handler,
-        )
+    def NewMrpcCall(key: str, message: str):
+        return MrpcCall(key=key.encode(), message=message.encode())
 
 
 class MrpcClient(ctypes.Structure):
@@ -29,7 +24,7 @@ class MrpcClient(ctypes.Structure):
 lib_path = os.path.join(os.path.dirname(__file__), "../librpc_client.so")
 lib = ctypes.CDLL(lib_path)
 
-lib.mrpc_create_client.argtypes = [cchar_p]
+lib.mrpc_create_client.argtypes = [cchar_p, response_handler]
 lib.mrpc_create_client.restype = ctypes.POINTER(MrpcClient)
 
 lib.mrpc_destroy_client.argtypes = [ctypes.POINTER(MrpcClient)]

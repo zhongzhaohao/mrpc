@@ -1,53 +1,85 @@
 #include "mrpcpp/server.h"
 #include <iostream>
-#include <thread>
-#include <chrono>
+#include <mutex>
 
-namespace mrpc {
+namespace mrpc::server {
 
-MrpcServer::MrpcServer(const std::string& addr) {
-  server_ = mrpc_create_server(addr.c_str());
-}
+std::map<std::string, Callback> g_callbacks;
+std::mutex g_callback_mutex;
 
-MrpcServer::~MrpcServer() {
-  mrpc_destroy_server(server_);
-}
+const std::string UNKNOWN = "UNKNOW_FUNC";
 
-Status MrpcServer::RegisterService(std::shared_ptr<ServiceBase> service) {
-  services_.push_back(service);
-  
-  // 获取服务信息
-  std::string service_name = service->GetServiceName();
-  std::vector<std::string> method_names = service->GetMethodNames();
-  std::vector<request_handler> handlers = service->GetHandlers();
-  
-  // 转换为C接口需要的格式
-  std::vector<const char*> method_ptrs;
-  for (const auto& method : method_names) {
-    method_ptrs.push_back(method.c_str());
+void ServerCallback(cchar_t *method, cchar_t *key, cchar_t *request,
+                    cchar_t *source) {
+  Callback cb;
+
+  {
+    std::lock_guard<std::mutex> lock(g_callback_mutex);
+    auto it = g_callbacks.find(method);
+    if (it == g_callbacks.end()) {
+      std::cout << "unregisted function: " << method << std::endl;
+      return;
+    }
+    cb = it->second;
   }
-  
-  mrpc_service c_service {
-    service_name.c_str(),
-    method_ptrs.data(),
-    handlers.data(),
-    static_cast<int>(method_names.size())
+
+  if (cb) {
+    cb(key, request, source);
+  }
+}
+
+void RegisterRpcCallback(const std::string &key, Callback cb) {
+  std::lock_guard<std::mutex> lock(g_callback_mutex);
+  g_callbacks[key] = std::move(cb);
+}
+
+MrpcServer::MrpcServer(const std::string &addr) {
+  server_ = mrpc_create_server(addr.c_str(), ServerCallback);
+}
+
+void MrpcServer::Stop() { mrpc_destroy_server(server_); }
+
+void MrpcServer::RegisterService(MrpcService *service) {
+  services_.push_back(service);
+
+  auto self(shared_from_this());
+  auto handler = [self](std::shared_ptr<RpcMethodHandler> method, cchar_t *key,
+                        cchar_t *request, cchar_t *source) {
+    std::string result;
+    Status status = method->Run(request, result);
+    if (!status.ok()) {
+      result = status.message();
+    }
+    mrpc_call response = {key, result.c_str()};
+    status = mrpc_send_reponse(self->server_, &response, source);
+    if (!status.ok()) {
+      std::cout << "send response to " << key
+                << " with error: " << status.error_code();
+    }
   };
-  
-  mrpc_status status = mrpc_register_service(server_, &c_service);
-  return Status(status);
+
+  for (const auto &pair : service->GetHandlers()) {
+    auto method_name = pair.first;
+    auto method = pair.second;
+    auto callback = [handler, method](cchar_t *k, cchar_t *r, cchar_t *s) {
+      handler(method, k, r, s);
+    };
+    std::cout << "register func: " << method_name << std::endl;
+    RegisterRpcCallback(method_name, callback);
+  }
 }
 
 Status MrpcServer::Start() {
-  mrpc_status status = mrpc_start_server(server_);
-  return Status(status);
+  // Register unknown handler
+
+  auto self(shared_from_this());
+  auto callback = [self](cchar_t *key, cchar_t *request, cchar_t *source) {
+    mrpc_call response = {key, "no such func"};
+    mrpc_send_reponse(self->server_, &response, source);
+  };
+  RegisterRpcCallback(UNKNOWN, callback);
+
+  return mrpc_start_server(server_);
 }
 
-void MrpcServer::Wait() {
-  // 简单的阻塞等待实现
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-}
-
-} // namespace mrpc 
+} // namespace mrpc::server

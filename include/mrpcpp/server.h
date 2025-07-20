@@ -1,53 +1,107 @@
 #pragma once
 
+#include "json.h"
 #include "mrpc/mrpc.h"
 #include "status.h"
-#include <string>
-#include <vector>
 #include <functional>
 #include <memory>
+#include <string>
+#include <type_traits>
+#include <vector>
 
-namespace mrpc {
+namespace mrpc::server {
 
-// 服务处理函数的类型
-using ServiceHandler = std::function<Status(const std::string& request, 
-                                          std::string& response)>;
+using Callback = std::function<void(cchar_t *, cchar_t *, cchar_t *)>;
 
-class ServiceBase {
+extern "C" void ServerCallback(cchar_t *key, cchar_t *request, cchar_t *source);
+
+void RegisterRpcCallback(const std::string &key, Callback cb);
+
+class RpcMethodHandler {
 public:
-  virtual ~ServiceBase() = default;
-  virtual std::string GetServiceName() const = 0;
-  virtual std::vector<std::string> GetMethodNames() const = 0;
-  virtual std::vector<request_handler> GetHandlers() const = 0;
+  virtual Status Run(const std::string &args, std::string &result) = 0;
 };
 
-class MrpcServer {
+template <typename Request, typename Response,
+          typename = std::enable_if_t<std::is_base_of_v<Parser, Request> &&
+                                      std::is_base_of_v<Parser, Response>>>
+class RpcHandler : public RpcMethodHandler {
 public:
-  MrpcServer(const std::string& addr);
-  ~MrpcServer();
-  
-  // 注册服务
-  Status RegisterService(std::shared_ptr<ServiceBase> service);
-  
-  // 启动服务器
-  Status Start();
-  
-  // 阻塞等待服务器停止
-  void Wait();
-  
+  template <typename F>
+  explicit RpcHandler(F &&func) : func_(std::forward<F>(func)) {}
+
+  Status Run(const std::string &args, std::string &result) override {
+    auto request = Request();
+
+    try {
+      request.fromString(args);
+    } catch (const std::exception &e) {
+      return Status(StatusCode::PARSE_FROM_JSON_FAILURE, e.what());
+    }
+
+    auto response = Response();
+
+    try {
+      func_(request, response);
+    } catch (const std::exception &e) {
+      return Status(StatusCode::RPC_HANDLER_FAILED, e.what());
+    }
+
+    try {
+      result = response.toString();
+    } catch (const std::exception &e) {
+      return Status(StatusCode::PARSE_TO_JSON_FAILURE, e.what());
+    }
+
+    return Status::OK();
+  }
+
 private:
-  mrpc_server* server_;
-  std::vector<std::shared_ptr<ServiceBase>> services_;
+  std::function<Status(const Request &request, Response &response)> func_;
 };
 
-// 用于生成服务实现的基类模板
-template<typename ServiceImpl>
-class Service : public ServiceBase {
+class MrpcService {
 public:
-  Service(ServiceImpl* impl) : impl_(impl) {}
-  
-protected:
-  ServiceImpl* impl_;
+  MrpcService(const std::string &name) : service_name(name) {}
+
+  std::string GetServiceName() { return service_name; }
+
+  virtual ~MrpcService() = default;
+
+  const std::map<std::string, std::shared_ptr<RpcMethodHandler>> &
+  GetHandlers() const {
+    return methods_;
+  }
+
+  template <typename Request, typename Response, typename Func>
+  void AddHandler(const std::string &method_name, Func &&func) {
+    auto handler = std::make_shared<RpcHandler<Request, Response>>(
+        std::forward<Func>(func));
+    methods_.emplace(method_name, handler);
+  }
+
+private:
+  std::string service_name;
+  std::map<std::string, std::shared_ptr<RpcMethodHandler>> methods_;
 };
 
-} // namespace mrpc 
+class MrpcServer : public std::enable_shared_from_this<MrpcServer> {
+public:
+  static std::shared_ptr<MrpcServer> Create(const std::string &addr) {
+    return std::make_shared<MrpcServer>(addr);
+  }
+
+  MrpcServer(const std::string &addr);
+
+  void RegisterService(MrpcService *service);
+
+  Status Start();
+
+  void Stop();
+
+private:
+  mrpc_server *server_;
+  std::vector<MrpcService *> services_;
+};
+
+} // namespace mrpc::server

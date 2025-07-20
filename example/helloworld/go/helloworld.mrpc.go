@@ -6,7 +6,7 @@ import (
 )
 
 var Hello_method_names = []string{
-	"/Hello/SayHello",
+	"/helloworld.Greeter/SayHello",
 }
 
 type SayHelloRequest struct {

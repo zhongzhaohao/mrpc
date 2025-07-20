@@ -7,80 +7,67 @@
 using json = nlohmann::json;
 
 static const char *Hello_method_names[] = {
-    "/Hello/SayHello",
+    "/helloworld.Greeter/SayHello",
 };
 
-class SayHelloRequest : public mrpc::ParseToJson {
+class SayHelloRequest : public mrpc::Parser {
 public:
   SayHelloRequest() {}
   SayHelloRequest(std::string name) : name(name) {}
 
 private:
   json toJson() const override { return json{{"name", name}}; }
+  void fromJson(const json &j) override { name = j.value("name", ""); }
 
 public:
-  const std::string name;
+  std::string name;
 };
 
-class SayHelloResponse : public mrpc::ParseFromJson {
+class SayHelloResponse : public mrpc::Parser {
 public:
   SayHelloResponse() {}
   SayHelloResponse(std::string message) : message(message) {}
 
 private:
+  json toJson() const override { return json{{"message", message}}; }
   void fromJson(const json &j) override { message = j.value("message", ""); }
 
 public:
   std::string message;
 };
 
-class HelloStub : mrpc::MrpcClient {
+class HelloStub : mrpc::client::MrpcClient {
 public:
-  HelloStub(const std::string &addr) : mrpc::MrpcClient(addr) {}
+  HelloStub(const std::string &addr) : mrpc::client::MrpcClient(addr) {}
 
   mrpc::Status SayHello(SayHelloRequest &request, SayHelloResponse &response) {
     return Send(Hello_method_names[0], request, response);
   }
 
-  mrpc::Status AsyncSayHello(SayHelloRequest &request) {
-    return AsyncSend(Hello_method_names[0], request);
+  mrpc::Status AsyncSayHello(SayHelloRequest &request, std::string &key) {
+    return AsyncSend(Hello_method_names[0], request, key);
   }
 
-  void CallbackSayHello(SayHelloRequest &request, SayHelloResponse &response,std::function<void(mrpc::Status)> callback) {
-    CallbackSend(Hello_method_names[0], request, response,callback);
+  void CallbackSayHello(SayHelloRequest &request, SayHelloResponse &response,
+                        std::function<void(mrpc::Status)> callback) {
+    CallbackSend(Hello_method_names[0], request, response, callback);
   }
 
   mrpc::Status Receive(const std::string &key, SayHelloResponse &response) {
-    return mrpc::MrpcClient::Receive(key,response);
+    return mrpc::client::MrpcClient::Receive(key, response);
   }
 };
 
-// 服务端生成的服务类
-class HelloService : public mrpc::ServiceBase {
+class HelloService : public mrpc::server::MrpcService {
 public:
-  HelloService() {
-    service_name_ = "Hello";
-  }
-  
-  void RegisterMethod(const std::string& method_name, request_handler handler) {
-    method_names_.push_back(method_name);
-    handlers_.push_back(handler);
-  }
-  
-  std::string GetServiceName() const override {
-    return service_name_;
-  }
-  
-  std::vector<std::string> GetMethodNames() const override {
-    return method_names_;
-  }
-  
-  std::vector<request_handler> GetHandlers() const override {
-    return handlers_;
+  HelloService() : mrpc::server::MrpcService("helloworld.Greeter") {
+    AddHandler<SayHelloRequest, SayHelloResponse>(
+        Hello_method_names[0],
+        [this](const SayHelloRequest &request, SayHelloResponse &response) {
+          return this->SayHello(request, response);
+        });
   }
 
-private:
-  std::string service_name_;
-  std::vector<std::string> method_names_;
-  std::vector<request_handler> handlers_;
+  virtual mrpc::Status SayHello(const SayHelloRequest &request,
+                                SayHelloResponse &response) = 0;
 };
