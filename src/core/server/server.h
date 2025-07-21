@@ -3,7 +3,7 @@
 #include "mrpc/mrpc.h"
 #include "src/core/common/c_cpp_trans.h"
 #include "src/core/server/connection.h"
-#include "src/core/server/target.h"
+#include "src/core/server/endpoint.h"
 
 #include <boost/asio.hpp>
 #include <iostream>
@@ -38,10 +38,11 @@ private:
   boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
       work_guard_;
   std::thread io_thread_;
-  ServerTarget target_;
+  server::Endpoint target_;
   tcp::acceptor acceptor_;
   request_handler handler_;
-  std::unordered_map<std::string, std::shared_ptr<Connection>> connections_;
+  std::unordered_map<std::string, std::shared_ptr<server::Connection>>
+      connections_;
   std::mutex connection_mutex_;
 };
 

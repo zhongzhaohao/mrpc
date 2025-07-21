@@ -3,12 +3,12 @@
 #include <boost/asio.hpp>
 #include <string>
 
-namespace mrpc {
+namespace mrpc::server {
 using boost::asio::ip::tcp;
 
-class ServerTarget {
+class Endpoint {
 public:
-  ServerTarget(const std::string &addr) {
+  Endpoint(const std::string &addr) {
     auto colon_pos = addr.find(':');
     if (colon_pos != std::string::npos) {
       host_ = addr.substr(0, colon_pos);

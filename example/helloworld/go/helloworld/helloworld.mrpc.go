@@ -1,11 +1,11 @@
-package main
+package helloworld
 
 import (
 	"encoding/json"
 	"mrpc"
 )
 
-var Hello_method_names = []string{
+var Greeter_method_names = []string{
 	"/helloworld.Greeter/SayHello",
 }
 
@@ -29,39 +29,39 @@ func (r *SayHelloResponse) FromString(data string) error {
 	return json.Unmarshal([]byte(data), r)
 }
 
-type HelloClient struct {
+type GreeterClient struct {
 	client *mrpc.Client
 }
 
-func NewHelloClient(s string) *HelloClient {
-	return &HelloClient{
+func NewGreeterClient(s string) *GreeterClient {
+	return &GreeterClient{
 		client: mrpc.NewClient(s),
 	}
 }
 
-func (h *HelloClient) SayHello(request *SayHelloRequest) (string, error) {
+func (h *GreeterClient) SayHello(request *SayHelloRequest) (string, error) {
 	response := &SayHelloResponse{}
-	err := h.client.Send(Hello_method_names[0], request, response)
+	err := h.client.Send(Greeter_method_names[0], request, response)
 	return response.Message, err
 }
 
-func (h *HelloClient) AsyncSayHello(request *SayHelloRequest) (string, error) {
-	return h.client.AsyncSend(Hello_method_names[0], request)
+func (h *GreeterClient) AsyncSayHello(request *SayHelloRequest) (string, error) {
+	return h.client.AsyncSend(Greeter_method_names[0], request)
 }
 
-func (h *HelloClient) CallbackSayHello(request *SayHelloRequest, callback func(string, error)) {
+func (h *GreeterClient) CallbackSayHello(request *SayHelloRequest, callback func(string, error)) {
 	response := &SayHelloResponse{}
-	h.client.CallbackSend(Hello_method_names[0], request, response, func(err error) {
+	h.client.CallbackSend(Greeter_method_names[0], request, response, func(err error) {
 		callback(response.Message, err)
 	})
 }
 
-func (h *HelloClient) Receive(key string) (string, error) {
+func (h *GreeterClient) Receive(key string) (string, error) {
 	response := &SayHelloResponse{}
 	err := h.client.Receive(key, response)
 	return response.Message, err
 }
 
-func (h *HelloClient) Close() {
+func (h *GreeterClient) Close() {
 	h.client.Close()
 }

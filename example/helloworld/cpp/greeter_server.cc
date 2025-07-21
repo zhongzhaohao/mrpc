@@ -18,7 +18,11 @@ void signal_handler(int signal) {
   }
 }
 
-class HelloServiceImpl : public HelloService {
+using helloworld::GreeterService;
+using helloworld::SayHelloRequest;
+using helloworld::SayHelloResponse;
+
+class GreeterServiceImpl : public GreeterService {
 public:
   mrpc::Status SayHello(const SayHelloRequest &request,
                         SayHelloResponse &response) override {
@@ -29,11 +33,11 @@ public:
 
 int main() {
 
-  HelloServiceImpl hello_service;
+  GreeterServiceImpl greeter_service;
 
   auto server = mrpc::server::MrpcServer::Create("0.0.0.0:8080");
 
-  server->RegisterService(&hello_service);
+  server->RegisterService(&greeter_service);
 
   auto status = server->Start();
   if (!status.ok()) {

@@ -4,9 +4,13 @@
 
 #include "helloworld.mrpc.h"
 
-class HelloClient {
+using helloworld::GreeterStub;
+using helloworld::SayHelloRequest;
+using helloworld::SayHelloResponse;
+
+class GreeterClient {
 public:
-  HelloClient() : stub_(new HelloStub("127.0.0.1:8080")) {}
+  GreeterClient() : stub_(new GreeterStub("127.0.0.1:8080")) {}
 
   std::string SayHello(const std::string &user) {
     SayHelloRequest request(user);
@@ -75,19 +79,19 @@ public:
   }
 
 private:
-  std::unique_ptr<HelloStub> stub_;
+  std::unique_ptr<GreeterStub> stub_;
 };
 
 int main() {
-  HelloClient hello;
+  GreeterClient greeter;
 
-  std::string response1 = hello.SayHello("sync RPC");
+  std::string response1 = greeter.SayHello("sync RPC");
   std::cout << "Greeter 1 received: " << response1 << std::endl;
 
-  std::string response2 = hello.AsyncSayHello("async RPC");
+  std::string response2 = greeter.AsyncSayHello("async RPC");
   std::cout << "Greeter 2 received: " << response2 << std::endl;
 
-  std::string response3 = hello.CallbackSayHello("callback RPC");
+  std::string response3 = greeter.CallbackSayHello("callback RPC");
   std::cout << "Greeter 3 received: " << response3 << std::endl;
 
   return 0;

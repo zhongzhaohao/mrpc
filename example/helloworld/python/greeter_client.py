@@ -1,9 +1,9 @@
 import threading
-from helloworld_mrpc import HelloClient, SayHelloRequest
+from helloworld_mrpc import GreeterClient, SayHelloRequest
 
 
 def main():
-    client = HelloClient("127.0.0.1:8080")
+    client = GreeterClient("127.0.0.1:8080")
 
     # 同步调用
     message, err = client.SayHello(SayHelloRequest(name="sync RPC"))

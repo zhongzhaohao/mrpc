@@ -1,11 +1,12 @@
 #pragma once
 
 #include "src/core/client/target.h"
+#include "src/core/common/connection.h"
 #include <boost/asio.hpp>
 
 #include "mrpc/mrpc.h"
 
-namespace mrpc {
+namespace mrpc::client {
 using boost::asio::io_context;
 using boost::asio::ip::tcp;
 
@@ -69,41 +70,49 @@ private:
   status status_;
 };
 
-class Channel : public std::enable_shared_from_this<Channel> {
+class Connection : public BaseConnection<Connection> {
 public:
-  using ptr = std::shared_ptr<Channel>;
-
+  using ptr = std::shared_ptr<Connection>;
   static ptr Create(boost::asio::io_context &io, Target &target,
                     response_handler handler) {
-    return std::make_shared<Channel>(io, target, handler);
+    return std::make_shared<Connection>(io, target, handler);
   }
 
-  Channel(boost::asio::io_context &ctx, Target &target,
-          response_handler handler);
+  Connection(boost::asio::io_context &ctx, Target &target,
+             response_handler handler);
 
-  ~Channel();
+  void Close() override {
+    if (socket().is_open()) {
+      socket().cancel();
+      socket().shutdown(tcp::socket::shutdown_both);
+      socket().close();
+    }
+  }
 
-  mrpc_status Send(mrpc_call *call);
+  void Connect(std::function<void()> pre_connect = nullptr);
 
-  // 主动连接（可用于重连）
-  // first call outside without lock
-  void Connect(std::function<void()> func = nullptr);
+  void HandleReadData(const std::string &data) override;
+
+  mrpc_status PreSend(mrpc_call *call) override;
+
+  void SendFailed(mrpc_call *call,
+                  const boost::system::error_code &ec) override;
 
 private:
   void OnConnect(const boost::system::error_code &ec);
-  void DoRead();
-  void OnRead(const boost::system::error_code &ec);
 
-  tcp::socket socket_;
   tcp::resolver resolver_;
   Target target_;
 
   rpc_event_queue pending_queue;
 
+  // 客户端和服务端逻辑不一样：
+  //    服务端接收到信息则必定已经连接
+  //    客户端要发送信息前可能没有连接
+  // 因此客户端需要维护连接状态
   connect_status connect_status_;
   std::mutex status_mutex_;
 
-  boost::asio::streambuf data_;
   response_handler handler_;
 };
-} // namespace mrpc
+} // namespace mrpc::client

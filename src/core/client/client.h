@@ -1,7 +1,6 @@
 #pragma once
 
-#include "src/core/client/channel.h"
-#include "src/core/client/target.h"
+#include "src/core/client/connection.h"
 #include "src/core/common/c_cpp_trans.h"
 
 #include "mrpc/mrpc.h"
@@ -33,7 +32,7 @@ public:
 
 private:
   void _init_channel() {
-    channel_ = Channel::Create(io_, target_, handler_);
+    channel_ = client::Connection::Create(io_, target_, handler_);
     channel_->Connect();
   }
 
@@ -42,8 +41,8 @@ private:
   boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
       work_guard_;
   std::thread io_thread_;
-  Target target_;
-  std::shared_ptr<Channel> channel_;
+  client::Target target_;
+  std::shared_ptr<client::Connection> channel_;
   std::once_flag channel_flag_;
   response_handler handler_;
 };

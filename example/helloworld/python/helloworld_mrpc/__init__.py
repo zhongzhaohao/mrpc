@@ -1,1 +1,1 @@
-from .helloworld_mrpc import HelloClient, SayHelloRequest
+from .helloworld_mrpc import GreeterClient, SayHelloRequest

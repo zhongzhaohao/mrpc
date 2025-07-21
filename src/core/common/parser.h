@@ -1,4 +1,4 @@
-
+#pragma once
 
 #include <mrpc/mrpc.h>
 #include <sstream>

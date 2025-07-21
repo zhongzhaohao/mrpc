@@ -18,26 +18,26 @@ cc_library(
     name = "rpc_client",
     srcs = [
         "client/client.cc",
+        "id.cc",
     ],
     hdrs = [
         "client/client.h",
-        "client/target.h",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],
     deps = [
-        ":client_channel",
+        ":client_connection",
     ],
     alwayslink = True,
 )
 
 cc_library(
-    name = "client_channel",
+    name = "client_connection",
     srcs = [
-        "client/channel.cc",
+        "client/connection.cc",
     ],
     hdrs = [
-        "client/channel.h",
+        "client/connection.h",
         "client/target.h",
     ],
     visibility = ["//visibility:__pkg__"],
@@ -51,7 +51,6 @@ cc_library(
 
 cc_library(
     name = "common",
-    srcs = ["common/id.cc"],
     hdrs = glob(["common/*.h"]),
     visibility = ["//visibility:__pkg__"],
     deps = [
@@ -81,7 +80,6 @@ cc_library(
     ],
     hdrs = [
         "server/server.h",
-        "server/target.h",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],
@@ -98,7 +96,7 @@ cc_library(
     ],
     hdrs = [
         "server/connection.h",
-        "server/target.h",
+        "server/endpoint.h",
     ],
     visibility = ["//visibility:__pkg__"],
     deps = [

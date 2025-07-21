@@ -3,7 +3,7 @@
 #include <boost/asio.hpp>
 #include <string>
 
-namespace mrpc {
+namespace mrpc::client {
 using boost::asio::ip::tcp;
 
 class Target {

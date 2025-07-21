@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	pb "mrpc/example/helloworld/go/helloworld"
 	"sync"
 )
 
 func main() {
-	client := NewHelloClient("127.0.0.1:8080")
+	client := pb.NewGreeterClient("127.0.0.1:8080")
 	defer client.Close()
 	{
-		message, err := client.SayHello(&SayHelloRequest{"sync RPC"})
+		message, err := client.SayHello(&pb.SayHelloRequest{Name: "sync RPC"})
 		if err == nil {
 			fmt.Println("Greeter 1 received: ", message)
 		} else {
@@ -17,7 +18,7 @@ func main() {
 		}
 	}
 	{
-		key, err := client.AsyncSayHello(&SayHelloRequest{"async RPC"})
+		key, err := client.AsyncSayHello(&pb.SayHelloRequest{Name: "async RPC"})
 		if err == nil {
 			message, err := client.Receive(key)
 			if err == nil {
@@ -32,7 +33,7 @@ func main() {
 	{
 		var wg sync.WaitGroup
 		wg.Add(1)
-		client.CallbackSayHello(&SayHelloRequest{"callback RPC"}, func(message string, err error) {
+		client.CallbackSayHello(&pb.SayHelloRequest{Name: "callback RPC"}, func(message string, err error) {
 			defer wg.Done()
 			if err == nil {
 				fmt.Println("Greeter 3 received: ", message)

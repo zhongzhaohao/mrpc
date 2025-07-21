@@ -28,25 +28,22 @@ mrpc_status Server::Start() {
 }
 
 void Server::DoAccept() {
-  auto new_connection = Connection::Create(io_, handler_);
+  auto new_connection = server::Connection::Create(io_, handler_);
 
-  acceptor_.async_accept(
-      new_connection->socket(),
+  new_connection->Connect(
+      acceptor_,
       [this, new_connection](const boost::system::error_code &ec) {
         if (!ec) {
           std::lock_guard<std::mutex> lock(connection_mutex_);
-          auto id = new_connection->id();
-
-          new_connection->SetOnClose([id, this] {
-            std::lock_guard<std::mutex> lock(connection_mutex_);
-            connections_.erase(id);
-          });
+          auto id = new_connection->get_source();
 
           connections_.emplace(id, new_connection);
-
-          new_connection->Start();
         }
         DoAccept();
+      },
+      [this, new_connection] {
+        std::lock_guard<std::mutex> lock(connection_mutex_);
+        connections_.erase(new_connection->get_source());
       });
 }
 

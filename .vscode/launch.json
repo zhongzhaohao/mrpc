@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bazel-bin/example/helloworld/cpp/greeter_client",
+            "program": "${workspaceFolder}/bazel-bin/example/helloworld/cpp/greeter_server",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
