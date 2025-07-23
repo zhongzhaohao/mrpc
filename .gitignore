@@ -1,7 +1,7 @@
 bazel-*
 
 .cache
-
+**/__pycache__
 external
 
 compile_commands.json

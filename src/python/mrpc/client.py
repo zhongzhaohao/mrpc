@@ -3,7 +3,7 @@ import threading
 from typing import Callable, TypeAlias
 
 from .status import MrpcErrorFrom
-from .json import ParseFromJson, ParseToJson
+from .json import Parser
 from .defs import response_handler, lib, MrpcCall
 from .queue import ClientQueue
 
@@ -51,7 +51,7 @@ class Client:
         lib.mrpc_destroy_client(self.client)
 
     def Send(
-        self, func: str, request: ParseToJson, response: ParseFromJson
+        self, func: str, request: Parser, response: Parser
     ) -> Exception | None:
         key, err = self.AsyncSend(func, request)
         if err != None:
@@ -59,7 +59,7 @@ class Client:
         return self.Receive(key, response)
 
     def AsyncSend(
-        self, func: str, request: ParseToJson
+        self, func: str, request: Parser
     ) -> tuple[str, Exception | None]:
         try:
             req = request.toString()
@@ -78,7 +78,7 @@ class Client:
         except Exception as e:
             return "", err
 
-    def Receive(self, key: str, response: ParseFromJson) -> Exception | None:
+    def Receive(self, key: str, response: Parser) -> Exception | None:
         result, err = self.queue.get_result(key)
         try:
             response.fromString(result)
@@ -88,8 +88,8 @@ class Client:
     def CallbackSend(
         self,
         func: str,
-        request: ParseToJson,
-        response: ParseFromJson,
+        request: Parser,
+        response: Parser,
         receive: Callable[[Exception | None], None],
     ):
         try:

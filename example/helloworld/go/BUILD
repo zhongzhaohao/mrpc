@@ -2,7 +2,15 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_binary(
     name = "greeter_client",
-    srcs = glob(["*.go"]),
+    srcs = ["greeter_client.go"],
+    deps = [
+        "helloworld_RPC",
+    ],
+)
+
+go_binary(
+    name = "greeter_server",
+    srcs = ["greeter_server.go"],
     deps = [
         "helloworld_RPC",
     ],

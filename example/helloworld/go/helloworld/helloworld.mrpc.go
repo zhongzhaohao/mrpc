@@ -21,8 +21,20 @@ func (r *SayHelloRequest) ToString() (string, error) {
 	return string(data), nil
 }
 
+func (r *SayHelloRequest) FromString(data string) error {
+	return json.Unmarshal([]byte(data), r)
+}
+
 type SayHelloResponse struct {
 	Message string `json:"message"`
+}
+
+func (r *SayHelloResponse) ToString() (string, error) {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func (r *SayHelloResponse) FromString(data string) error {
@@ -64,4 +76,32 @@ func (h *GreeterClient) Receive(key string) (string, error) {
 
 func (h *GreeterClient) Close() {
 	h.client.Close()
+}
+
+type GreeterService struct {
+	*mrpc.MrpcService
+}
+
+func NewGreeterService() *GreeterService {
+	svc := mrpc.NewMrpcService("helloworld.Greeter")
+	svc.AddHandler(
+		Greeter_method_names[0],
+		func() mrpc.Parser { return &SayHelloRequest{} },
+		func() mrpc.Parser { return &SayHelloResponse{} },
+		func(request mrpc.Parser, response mrpc.Parser) error {
+			req := request.(*SayHelloRequest)
+			resp := response.(*SayHelloResponse)
+			resp.Message = "Hello " + req.Name
+			return nil
+		},
+	)
+	return &GreeterService{svc}
+}
+
+type GreeterServer struct {
+	*mrpc.Server
+}
+
+func NewGreeterServer(addr string) *GreeterServer {
+	return &GreeterServer{mrpc.NewServer(addr)}
 }

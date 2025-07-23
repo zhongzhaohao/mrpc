@@ -1,6 +1,6 @@
 import mrpc
 import json
-from typing import Callable
+from typing import Callable, Optional
 
 Callback = Callable[[str, Exception | None], None]
 
@@ -10,21 +10,29 @@ Greeter_METHOD_NAMES = [
 ]
 
 
-class SayHelloRequest(mrpc.ParseToJson):
-    def __init__(self, name: str):
+class SayHelloRequest(mrpc.Parser):
+    def __init__(self, name: Optional[str] = None):
         self.name = name
 
     def toString(self) -> str:
         return json.dumps({"name": self.name})
+    
+    def fromString(self, data: str):
+        obj = json.loads(data)
+        self.name = obj.get("name", "")
 
 
-class SayHelloResponse(mrpc.ParseFromJson):
+class SayHelloResponse(mrpc.Parser):
     def __init__(self):
         self.message = ""
+
+    def toString(self) -> str:
+        return json.dumps({"message": self.message})
 
     def fromString(self, data: str):
         obj = json.loads(data)
         self.message = obj.get("message", "")
+
 
 
 class GreeterClient(mrpc.Client):
@@ -52,3 +60,20 @@ class GreeterClient(mrpc.Client):
         response = SayHelloResponse()
         err = super().Receive(key, response)
         return response.message, err
+
+
+class GreeterService(mrpc.MrpcService):
+    def __init__(self):
+        super().__init__("helloworld.Greeter")
+        self.AddHandler(
+            Greeter_METHOD_NAMES[0], SayHelloRequest, SayHelloResponse, 
+            lambda request, response: self.SayHello(request, response)
+        )
+
+    def SayHello(self, request: 'SayHelloRequest', response: 'SayHelloResponse') -> mrpc.MrpcError | None:
+        pass
+
+
+class GreeterServer(mrpc.Server):
+    def __init__(self, server_address: str):
+        super().__init__(server_address)

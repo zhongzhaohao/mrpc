@@ -3,7 +3,7 @@
 #include <mrpc/mrpc.h>
 #include <sstream>
 #include <string>
-
+#include <tuple>
 static const std::string CALL_DELIMITER = "#MRPC#";
 static const std::string KEY_DELIMITER = "#-#";
 
