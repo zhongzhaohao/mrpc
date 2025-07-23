@@ -7,15 +7,23 @@ copy_file(
     out = "librpc_client.so",
 )
 
+copy_file(
+    name = "copy-librpc_server",
+    src = "//src/core:librpc_server.so",
+    out = "librpc_server.so",
+)
+
 py_library(
     name = "mrpc-python-frontend",
     srcs = glob(["mrpc/*.py"]),
     data = [
         "librpc_client.so",
+        "librpc_server.so"
     ],
     imports = ["."],
     visibility = ["//visibility:public"],
     deps = [
         "//src/core:librpc_client.so",
+        "//src/core:librpc_server.so"
     ],
 )

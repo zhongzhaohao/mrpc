@@ -11,6 +11,15 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "greeter_server",
+    srcs = glob(["*.py"]),
+    imports = ["."],
+    deps = [
+        "helloworld_mrpc",
+    ],
+)
+
 py_library(
     name = "helloworld_mrpc",
     srcs = glob(["helloworld_mrpc/*.py"]),
