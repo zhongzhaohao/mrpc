@@ -13,7 +13,6 @@ def GlobalRequestCallback(method: bytes, key: bytes, request: bytes, source: byt
     key_str = key.decode()
     request_str = request.decode()
     source_str = source.decode()
-    print(f"{method_str} is being used.")
     with _g_service_lock:
         cb = _g_service_methods.get(method_str)
     if cb:
@@ -34,12 +33,10 @@ class Server:
                     result = []
                     err = handler.Run(request, result)
                     response = result[0] if result else (str(err) if err else "")
-                    print("response", response)
                     call = MrpcCall.NewMrpcCall(key, response)
                     lib_server.mrpc_send_reponse(self.server, ctypes.byref(call), source.encode())
                 return cb
             with _g_service_lock:
-                print(f"{method} register successed.")
                 _g_service_methods[method] = make_cb(handler)
 
     def Start(self) -> MrpcError | None:

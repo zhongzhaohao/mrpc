@@ -1,7 +1,7 @@
 import json
 import threading
 from typing import Callable, Dict, Type, Any, List
-from .json import ParseToJson, ParseFromJson
+from .json import Parser
 from .status import MrpcError
 
 class RpcMethodHandler:
@@ -9,7 +9,7 @@ class RpcMethodHandler:
         raise NotImplementedError
 
 class RpcHandler(RpcMethodHandler):
-    def __init__(self, request_type: Type[ParseFromJson], response_type: Type[ParseToJson], func: Callable[[Any, Any], MrpcError | None]):
+    def __init__(self, request_type: Type[Parser], response_type: Type[Parser], func: Callable[[Any, Any], MrpcError | None]):
         self.request_type = request_type
         self.response_type = response_type
         self.func = func
@@ -29,7 +29,6 @@ class RpcHandler(RpcMethodHandler):
             return MrpcError.MRPC_SEND_FAILURE
         try:
             result.append(response.toString())
-            print("result", result)
         except Exception as e:
             return MrpcError.MRPC_PARSE_FAILURE
         return None
@@ -45,8 +44,8 @@ class MrpcService:
     def GetHandlers(self) -> Dict[str, RpcMethodHandler]:
         return self.methods
 
-    def AddHandler(self, method_name: str, request_type: Type[ParseFromJson], 
-                  response_type: Type[ParseToJson], func: Callable[[Any, Any], MrpcError | None]) -> None:
+    def AddHandler(self, method_name: str, request_type: Type[Parser], 
+                  response_type: Type[Parser], func: Callable[[Any, Any], MrpcError | None]) -> None:
         handler = RpcHandler(request_type, response_type, func)
         self.methods[method_name] = handler
 

@@ -10,7 +10,7 @@ Greeter_METHOD_NAMES = [
 ]
 
 
-class SayHelloRequest(mrpc.ParseToJson):
+class SayHelloRequest(mrpc.Parser):
     def __init__(self, name: Optional[str] = None):
         self.name = name
 
@@ -22,7 +22,7 @@ class SayHelloRequest(mrpc.ParseToJson):
         self.name = obj.get("name", "")
 
 
-class SayHelloResponse(mrpc.ParseFromJson):
+class SayHelloResponse(mrpc.Parser):
     def __init__(self):
         self.message = ""
 

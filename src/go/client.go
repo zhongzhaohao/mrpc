@@ -51,7 +51,7 @@ func (c *Client) Close() {
 }
 
 // Send 发送请求并同步接收响应
-func (c *Client) Send(funcName string, request ParseToJson, response ParseFromJson) error {
+func (c *Client) Send(funcName string, request Parser, response Parser) error {
 	key, err := c.AsyncSend(funcName, request)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (c *Client) Send(funcName string, request ParseToJson, response ParseFromJs
 	return c.Receive(key, response)
 }
 
-func (c *Client) Receive(key string, response ParseFromJson) error {
+func (c *Client) Receive(key string, response Parser) error {
 	result, err := c.queue.GetResult(key)
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (c *Client) send(key string, request string, callback Callback) error {
 }
 
 // AsyncSend 异步发送请求并注册回调
-func (c *Client) AsyncSend(funcName string, request ParseToJson) (string, error) {
+func (c *Client) AsyncSend(funcName string, request Parser) (string, error) {
 	reqStr, err := request.ToString()
 	if err != nil {
 		return "", err
@@ -107,7 +107,7 @@ func (c *Client) AsyncSend(funcName string, request ParseToJson) (string, error)
 	}
 }
 
-func (c *Client) CallbackSend(funcName string, request ParseToJson, response ParseFromJson, callback func(error)) {
+func (c *Client) CallbackSend(funcName string, request Parser, response Parser, callback func(error)) {
 	reqStr, err := request.ToString()
 	if err != nil {
 		callback(err)
@@ -129,10 +129,10 @@ func (c *Client) CallbackSend(funcName string, request ParseToJson, response Par
 }
 
 // ParseJson 是一个接口，用于序列化/反序列化 JSON
-type ParseToJson interface {
+type Parser interface {
 	ToString() (string, error)
 }
 
-type ParseFromJson interface {
+type Parser interface {
 	FromString(s string) error
 }
