@@ -6,11 +6,8 @@
             "type": "shell",
             "command": "bazel",
             "args": [
-                "build",
-                "//example/helloworld/python:greeter_client",
-                "//example/helloworld/go:greeter_client",
-                "//example/helloworld/cpp:greeter_client",
-                "//example/helloworld/cpp:greeter_server",
+                "run",
+                "//scripts:helloworld_build",
             ],
             "group": {
                 "kind": "build",
@@ -23,7 +20,7 @@
             "command": "bazel",
             "args": [
                 "run",
-                ":refresh_compile_commands"
+                "//scripts:refresh_compile_commands"
             ],
             "group": {
                 "kind": "build",
