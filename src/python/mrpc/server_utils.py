@@ -1,4 +1,3 @@
-import json
 import threading
 from typing import Callable, Dict, Type, Any, List
 from .json import Parser
@@ -48,18 +47,3 @@ class MrpcService:
                   response_type: Type[Parser], func: Callable[[Any, Any], MrpcError | None]) -> None:
         handler = RpcHandler(request_type, response_type, func)
         self.methods[method_name] = handler
-
-_callback_registry: Dict[str, Callable[[str, str, str], None]] = {}
-_callback_lock = threading.Lock()
-
-def RegisterRpcCallback(method: str, cb: Callable[[str, str, str], None]) -> None:
-    with _callback_lock:
-        _callback_registry[method] = cb
-
-def ServerCallback(method: str, key: str, request: str, source: str) -> None:
-    with _callback_lock:
-        cb = _callback_registry.get(method)
-    if cb:
-        cb(key, request, source)
-    else:
-        print(f"No callback registered for method: {method}")

@@ -127,12 +127,3 @@ func (c *Client) CallbackSend(funcName string, request Parser, response Parser, 
 		callback(err)
 	}
 }
-
-// ParseJson 是一个接口，用于序列化/反序列化 JSON
-type Parser interface {
-	ToString() (string, error)
-}
-
-type Parser interface {
-	FromString(s string) error
-}

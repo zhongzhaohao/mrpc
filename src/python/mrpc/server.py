@@ -1,20 +1,27 @@
 import ctypes
 import threading
 from .defs import request_handler, lib_server, MrpcCall
-from .server_utils import MrpcService, RegisterRpcCallback, ServerCallback
+from .server_utils import MrpcService
 from .status import MrpcError
 
-_g_service_methods = {}
-_g_service_lock = threading.Lock()
+UNKNOWN = "UNKNOW_FUNC"
 
+g_callbacks = {}
+g_callback_mutex = threading.Lock()
+
+def RegisterRpcCallback(method: str, cb):
+    with g_callback_mutex:
+        g_callbacks[method] = cb
+        
 @request_handler
-def GlobalRequestCallback(method: bytes, key: bytes, request: bytes, source: bytes):
+def ServerCallback(method: bytes, key: bytes, request: bytes, source: bytes):
     method_str = method.decode()
     key_str = key.decode()
     request_str = request.decode()
     source_str = source.decode()
-    with _g_service_lock:
-        cb = _g_service_methods.get(method_str)
+    print(f"{method_str} is being used.")
+    with g_callback_mutex:
+        cb = g_callbacks.get(method_str)
     if cb:
         cb(key_str, request_str, source_str)
     else:
@@ -22,7 +29,7 @@ def GlobalRequestCallback(method: bytes, key: bytes, request: bytes, source: byt
 
 class Server:
     def __init__(self, addr: str):
-        self.server = lib_server.mrpc_create_server(addr.encode(), GlobalRequestCallback)
+        self.server = lib_server.mrpc_create_server(addr.encode(), ServerCallback)
         self.services = []
 
     def RegisterService(self, service: MrpcService):
@@ -36,10 +43,15 @@ class Server:
                     call = MrpcCall.NewMrpcCall(key, response)
                     lib_server.mrpc_send_reponse(self.server, ctypes.byref(call), source.encode())
                 return cb
-            with _g_service_lock:
-                _g_service_methods[method] = make_cb(handler)
+            RegisterRpcCallback(method, make_cb(handler))
 
     def Start(self) -> MrpcError | None:
+        # Register UNKNOWN callback before starting
+        def unknown_cb(key, request, source):
+            call = MrpcCall.NewMrpcCall(key, "no such func")
+            lib_server.mrpc_send_reponse(self.server, ctypes.byref(call), source.encode())
+        RegisterRpcCallback(UNKNOWN, unknown_cb)
+
         ret = lib_server.mrpc_start_server(self.server)
         if ret == 0:
             return None

@@ -5,6 +5,7 @@ go_library(
     srcs = glob(["*.go"]),
     cdeps = [
         "//src/core:rpc_client",
+        "//src/core:rpc_server",
     ],
     cgo = True,
     copts = [
